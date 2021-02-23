@@ -3,79 +3,72 @@ import numpy as np
 import glob
 import yaml
 import os
-
-def draw(img, corners, imgpts):
-    corner = tuple(corners[0].ravel())
-    img = cv2.line(img, corner, tuple(imgpts[0].ravel()), (255,0,0), 5)
-    img = cv2.line(img, corner, tuple(imgpts[1].ravel()), (0,255,0), 5)
-    img = cv2.line(img, corner, tuple(imgpts[2].ravel()), (0,0,255), 5)
-    return img
+import camera_calibration.tools as tools
+import camera_calibration.constants as c
 
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
 rows = 6
 cols = 9
 squares = rows * cols
-objp = np.zeros((squares,3), np.float32)
-objp[:,:2] = np.mgrid[0:rows, 0:cols].T.reshape(-1, 2)
-axis = np.float32([
-    [3,0,0],
-    [0,3,0],
-    [0,0,3]
-                   ]).reshape(-1,3)
+objp = np.zeros((squares, 3), np.float32)
+objp[:, :2] = np.mgrid[0:rows, 0:cols].T.reshape(-1, 2)
+xyz = np.float32([
+    [3, 0, 0],
+    [0, 3, 0],
+    [0, 0, 3]
+]).reshape(-1, 3)
 
-yaml_path = r'..\camera_calibration\outputs\left_calibration_matrix.yaml'
+yaml_path = r'..\camera_calibration\outputs\intrinsic_calibration.yaml'
 with open(yaml_path) as file:
     documents = yaml.full_load(file)
-mtx = documents['camera_matrix']
-mtx = np.float32(mtx)
-dist = documents['dist_coeff']
-dist = np.float32(dist)
+lmat = documents['lmat']
+lmat = np.float32(lmat)
+ldist = documents['ldist']
+ldist = np.float32(ldist)
 
+
+# Load data
 image_path = r'../images/1/'
-image_wc = 'left'
+bad_ixs = [str(x).zfill(2) for x in np.arange(11, 20)]
+image_dict = {}
+for image_wc in ['left', 'right']:
+    images = [im for im in os.listdir(c.IMAGE_DIR) if c.IM_EXTENSION in im and
+              image_wc in im]
+    bad_images = [image_wc + ix + '.jpg' for ix in bad_ixs]
+    good_images = sorted(list(set(images) - set(bad_images)))
+    image_dict[image_wc] = [os.path.join(c.IMAGE_DIR, x) for x in good_images]
 
-images = glob.glob(image_path + image_wc + '*.jpg')
-filtered_images = []
-bad = [
-    'left12.jpg',
-    'left13.jpg',
-    'left14.jpg',
-    'left15.jpg',
-    'left16.jpg',
-    'left17.jpg',
-    'left18.jpg',
-    'left19.jpg']
-for im in images:
-    add = True
-    for b in bad:
-        if b in im:
-            add = False
-    if add:
-        filtered_images.append(im)
+objp, lpt, rpt, wh = tools.get_stereo_points(image_dict['left'],
+                                             image_dict['right'],
+                                             draw=False)
 
-for fname in filtered_images:
+for fname in image_dict['left']:
     img = cv2.imread(fname)
-    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    ret, corners = cv2.findChessboardCorners(gray, (rows, cols),None)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    ret, corners = cv2.findChessboardCorners(gray, (rows, cols), None)
 
     if ret == True:
-        corners2 = cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
+        corners2 = cv2.cornerSubPix(gray,
+                                    corners,
+                                    c.WINDOW_SIZE,
+                                    (-1, -1),
+                                    criteria)
 
         # Find the rotation and translation vectors.
-        _, rvecs, tvecs, inliers = cv2.solvePnPRansac(objp,
-                                                      corners2,
-                                                      mtx,
-                                                      dist)
+        _, rvecs, tvecs, inliers = cv2.solvePnPRansac(
+            objp[0],
+            corners2,
+            lmat,
+            ldist)
 
         # project 3D points to image plane
-        imgpts, jac = cv2.projectPoints(axis, rvecs, tvecs, mtx, dist)
+        imgpts, jac = cv2.projectPoints(xyz, rvecs, tvecs, lmat, ldist)
 
-        img = draw(img,corners2,imgpts)
+        img = tools.draw(img, corners2, imgpts)
         cv2.imshow(os.path.split(fname)[1], img)
         k = cv2.waitKey(0) & 0xff
         if k == 's':
-            cv2.imwrite(fname[:6]+'.png', img)
+            cv2.imwrite(fname[:6] + '.png', img)
 
 # cv2.destroyAllWindows()
-
