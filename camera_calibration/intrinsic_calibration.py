@@ -83,8 +83,8 @@ def stereo_retrieve(left_images, right_images, draw):
                 cv2.imshow(os.path.split(right_name)[1], right_img_cv)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
-        return objpoints, imgpoints_left, imgpoints_right, \
-               right_gray.shape[::-1]
+    return objpoints, imgpoints_left, imgpoints_right, \
+           right_gray.shape[::-1]
 
 
 def retrieve(filtered_images, draw, out_name):
@@ -225,10 +225,21 @@ rproj = compute_projection_matrix(rmat1,
                                   tvec=rtransvec[0],
                                   rodrigues=True)
 
-img = cv2.imread(image_dict['left'][0])
+lpt_undist = cv2.undistortPoints(lpt[2], lmat1, ldist1, P=lmat1)
+rpt_undist = cv2.undistortPoints(rpt[2], rmat1, rdist1, P=rmat1)
 
-lpt_undist = cv2.undistortPoints(lpt[0], lmat1, ldist1, P=lmat1)
-rpt_undist = cv2.undistortPoints(rpt[0], rmat1, rdist1, P=rmat1)
+
+# rproj = compute_projection_matrix(rmat1,
+#                                   rvec=R,
+#                                   tvec=T,
+#                                   rodrigues=False)
+#
+# lproj = compute_projection_matrix(lmat1,
+#                                   rvec=np.eye(3),
+#                                   tvec=np.zeros(3),
+#                                   rodrigues=False)
+
+
 
 X = cv2.triangulatePoints(lproj,
                           rproj,
@@ -240,10 +251,13 @@ print(np.sum(np.square(np.diff(X)), axis=0))
 
 plt.figure()
 ax = plt.axes(projection='3d')
-ax.scatter3D(X[0], X[1], X[2], c=np.arange(X.shape[1]))
-plt.xlim([0, 10])
-plt.ylim([0, 10])
-ax.set_zlim(-2, 2)
+ax.scatter3D(X[0], X[1], -X[2], c=np.arange(X.shape[1]), cmap='RdBu')
+plt.xlabel('X')
+plt.ylabel('Y')
+ax.set_zlabel('Z')
+plt.xlim([-10, 10])
+plt.ylim([-10, 10])
+ax.set_zlim(-10, 10)
 plt.show()
 
 

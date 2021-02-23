@@ -18,9 +18,13 @@ cols = 9
 squares = rows * cols
 objp = np.zeros((squares,3), np.float32)
 objp[:,:2] = np.mgrid[0:rows, 0:cols].T.reshape(-1, 2)
-axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
+axis = np.float32([
+    [3,0,0],
+    [0,3,0],
+    [0,0,3]
+                   ]).reshape(-1,3)
 
-yaml_path = r'..\camera_calibration\calibration_matrix.yaml'
+yaml_path = r'..\camera_calibration\outputs\left_calibration_matrix.yaml'
 with open(yaml_path) as file:
     documents = yaml.full_load(file)
 mtx = documents['camera_matrix']
