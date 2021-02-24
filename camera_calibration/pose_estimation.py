@@ -8,11 +8,8 @@ import camera_calibration.constants as c
 
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-rows = 6
-cols = 9
-squares = rows * cols
-objp = np.zeros((squares, 3), np.float32)
-objp[:, :2] = np.mgrid[0:rows, 0:cols].T.reshape(-1, 2)
+objp = np.zeros((c.NUM_SQUARES, 3), np.float32)
+objp[:, :2] = np.mgrid[0:c.CHECKER_ROWS, 0:c.CHECKER_COLS].T.reshape(-1, 2)
 xyz = np.float32([
     [3, 0, 0],
     [0, 3, 0],
@@ -29,24 +26,27 @@ ldist = np.float32(ldist)
 
 
 # Load data
-image_path = r'../images/1/'
+image_path = c.IM_DIR
 bad_ixs = [str(x).zfill(2) for x in np.arange(11, 20)]
 image_dict = {}
-for image_wc in ['left', 'right']:
-    images = [im for im in os.listdir(c.IMAGE_DIR) if c.IM_EXTENSION in im and
+for image_wc in [c.CAM_ONE_ORIENT, c.CAM_TWO_ORIENT]:
+    images = [im for im in os.listdir(c.IM_DIR) if c.IM_EXTENSION in im and
               image_wc in im]
-    bad_images = [image_wc + ix + '.jpg' for ix in bad_ixs]
+    bad_images = [image_wc + ix + '.' + c.IM_EXTENSION for ix in bad_ixs]
     good_images = sorted(list(set(images) - set(bad_images)))
-    image_dict[image_wc] = [os.path.join(c.IMAGE_DIR, x) for x in good_images]
+    image_dict[image_wc] = [os.path.join(c.IM_DIR, x) for x in good_images]
 
-objp, lpt, rpt, wh = tools.get_stereo_points(image_dict['left'],
-                                             image_dict['right'],
+objp, lpt, rpt, wh = tools.get_stereo_points(image_dict[c.CAM_ONE_ORIENT],
+                                             image_dict[c.CAM_TWO_ORIENT],
                                              draw=False)
 
-for fname in image_dict['left']:
+mat = np.array([[0, 1, 0], [0, 0, -1], [1, 0, 0]]).astype(np.float32)
+xyz = np.matmul(mat, xyz)
+
+for fname in image_dict[c.CAM_ONE_ORIENT]:
     img = cv2.imread(fname)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    ret, corners = cv2.findChessboardCorners(gray, (rows, cols), None)
+    ret, corners = cv2.findChessboardCorners(gray, (c.CHECKER_ROWS, c.CHECKER_COLS), None)
 
     if ret == True:
         corners2 = cv2.cornerSubPix(gray,
@@ -62,7 +62,10 @@ for fname in image_dict['left']:
             lmat,
             ldist)
 
+
+
         # project 3D points to image plane
+
         imgpts, jac = cv2.projectPoints(xyz, rvecs, tvecs, lmat, ldist)
 
         img = tools.draw(img, corners2, imgpts)
@@ -72,3 +75,10 @@ for fname in image_dict['left']:
             cv2.imwrite(fname[:6] + '.png', img)
 
 # cv2.destroyAllWindows()
+
+
+#TODO: coordinate conversion
+# 0 -> 2
+# 1 -> 0
+# 2 -> 1
+# then -1 * y (second axis)

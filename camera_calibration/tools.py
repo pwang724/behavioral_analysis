@@ -2,6 +2,8 @@ import numpy as np
 import cv2
 import camera_calibration.constants as c
 import os
+import checkerboard
+import matplotlib.pyplot as plt
 
 def get_stereo_points(left_images, right_images, draw):
     objpoints = []  # 3d point in real world space
@@ -18,10 +20,18 @@ def get_stereo_points(left_images, right_images, draw):
         left_ret, left_corners = cv2.findChessboardCorners(
             left_gray, (c.CHECKER_ROWS, c.CHECKER_COLS), None)
 
+        if left_corners[0, 0, 0] > left_corners[-1, 0, 0]:
+            left_corners = left_corners[::-1,:,:]
+        left_corners = left_corners.astype(np.float32)
+
         right_img = cv2.imread(right_name)
         right_gray = cv2.cvtColor(right_img, cv2.COLOR_BGR2GRAY)
         right_ret, right_corners = cv2.findChessboardCorners(
             right_gray, (c.CHECKER_ROWS, c.CHECKER_COLS), None)
+
+        if right_corners[0, 0, 0] > right_corners[-1, 0, 0]:
+            right_corners = right_corners[::-1,:,:]
+        right_corners = right_corners.astype(np.float32)
 
         if left_ret and right_ret:
             objpoints.append(objp)

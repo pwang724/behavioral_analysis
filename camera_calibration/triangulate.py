@@ -21,20 +21,20 @@ rproj = calib_dict['rproj']
 # Load data
 bad_ixs = [str(x).zfill(2) for x in np.arange(11, 20)]
 image_dict = {}
-for image_wc in ['left', 'right']:
-    images = [im for im in os.listdir(c.IMAGE_DIR) if c.IM_EXTENSION in im and
+for image_wc in [c.CAM_ONE_ORIENT, c.CAM_TWO_ORIENT]:
+    images = [im for im in os.listdir(c.IM_DIR) if c.IM_EXTENSION in im and
               image_wc in im]
     bad_images = [image_wc + ix + '.jpg' for ix in bad_ixs]
     good_images = sorted(list(set(images) - set(bad_images)))
-    image_dict[image_wc] = [os.path.join(c.IMAGE_DIR, x) for x in good_images]
+    image_dict[image_wc] = [os.path.join(c.IM_DIR, x) for x in good_images]
 
-objp, lpt, rpt, wh = tools.get_stereo_points(image_dict['left'],
-                                             image_dict['right'],
+objp, lpt, rpt, wh = tools.get_stereo_points(image_dict[c.CAM_ONE_ORIENT],
+                                             image_dict[c.CAM_TWO_ORIENT],
                                              draw=False)
 
 # Triangulate
-lpt_undist = cv2.undistortPoints(lpt[0], lmat, ldist, P=lmat)
-rpt_undist = cv2.undistortPoints(rpt[0], rmat, rdist, P=rmat)
+lpt_undist = cv2.undistortPoints(lpt[10], lmat, ldist, P=lmat)
+rpt_undist = cv2.undistortPoints(rpt[10], rmat, rdist, P=rmat)
 
 X = cv2.triangulatePoints(lproj,
                           rproj,
