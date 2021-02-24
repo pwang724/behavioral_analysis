@@ -7,7 +7,6 @@ import camera_calibration.constants as c
 import camera_calibration.tools as tools
 
 
-bad_ixs = [str(x).zfill(2) for x in np.arange(11, 20)]
 bad_ixs = []
 
 image_dict = {}
@@ -20,7 +19,7 @@ for image_wc in [c.CAM_ONE_ORIENT, c.CAM_TWO_ORIENT]:
 
 objp, lpt, rpt, wh = tools.get_stereo_points(image_dict[c.CAM_ONE_ORIENT],
                                              image_dict[c.CAM_TWO_ORIENT],
-                                             draw=True)
+                                             draw=False)
 
 lrms, lmat, ldist, lrot, ltrans = cv2.calibrateCamera(
     objp,

@@ -2,7 +2,6 @@ import numpy as np
 import cv2
 import camera_calibration.constants as c
 import os
-import checkerboard
 import matplotlib.pyplot as plt
 
 def get_stereo_points(left_images, right_images, draw):
@@ -13,6 +12,7 @@ def get_stereo_points(left_images, right_images, draw):
     # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
     objp = np.zeros((c.NUM_SQUARES, 3), np.float32)
     objp[:, :2] = np.mgrid[0:c.CHECKER_ROWS, 0:c.CHECKER_COLS].T.reshape(-1, 2)
+    objp *= c.GRID_SPACING_MM
 
     for left_name, right_name in zip(left_images, right_images):
         left_img = cv2.imread(left_name)

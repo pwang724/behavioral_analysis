@@ -10,11 +10,14 @@ criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
 objp = np.zeros((c.NUM_SQUARES, 3), np.float32)
 objp[:, :2] = np.mgrid[0:c.CHECKER_ROWS, 0:c.CHECKER_COLS].T.reshape(-1, 2)
+objp *= c.GRID_SPACING_MM
+
 xyz = np.float32([
-    [3, 0, 0],
-    [0, 3, 0],
-    [0, 0, 3]
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1]
 ]).reshape(-1, 3)
+xyz *= c.GRID_SPACING_MM
 
 yaml_path = r'..\camera_calibration\outputs\intrinsic_calibration.yaml'
 with open(yaml_path) as file:

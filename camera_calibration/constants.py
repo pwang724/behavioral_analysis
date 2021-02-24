@@ -14,10 +14,11 @@ CHECKER_ROWS = 6
 CHECKER_COLS = 8
 NUM_SQUARES = CHECKER_ROWS * CHECKER_COLS
 
-WINDOW_SIZE = (11, 11)
+WINDOW_SIZE = (7, 7)
 
 OUTPUT_FOLDER_NAME = 'outputs'
 IM_EXTENSION = 'png'
-IM_DIR = r'C:\Users\pywang7\Desktop\test_calib_images'
+IM_DIR = r'..\camera_calibration\images'
 CAM_ONE_ORIENT = 'front'
 CAM_TWO_ORIENT = 'side'
+GRID_SPACING_MM = 3
