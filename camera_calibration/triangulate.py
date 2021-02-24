@@ -33,8 +33,8 @@ objp, lpt, rpt, wh = tools.get_stereo_points(image_dict[c.CAM_ONE_ORIENT],
                                              draw=False)
 
 # Triangulate
-lpt_undist = cv2.undistortPoints(lpt[10], lmat, ldist, P=lmat)
-rpt_undist = cv2.undistortPoints(rpt[10], rmat, rdist, P=rmat)
+lpt_undist = cv2.undistortPoints(lpt[12], lmat, ldist, P=lmat)
+rpt_undist = cv2.undistortPoints(rpt[12], rmat, rdist, P=rmat)
 
 X = cv2.triangulatePoints(lproj,
                           rproj,
@@ -42,15 +42,19 @@ X = cv2.triangulatePoints(lproj,
                           rpt_undist.squeeze().T)
 X /= X[3]
 X = X[:3]
+
 print(np.sum(np.square(np.diff(X)), axis=0))
+
+mat = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]]).astype(np.float32)
+X = np.matmul(mat, X)
 
 plt.figure()
 ax = plt.axes(projection='3d')
-ax.scatter3D(X[0], X[1], -X[2], c=np.arange(X.shape[1]), cmap='RdBu')
+ax.scatter3D(X[0], X[1], X[2], c=np.arange(X.shape[1]), cmap='RdBu')
 plt.xlabel('X')
 plt.ylabel('Y')
 ax.set_zlabel('Z')
-plt.xlim([-10, 10])
-plt.ylim([-10, 10])
-ax.set_zlim(-10, 10)
+plt.xlim([-5, 5])
+plt.ylim([-5, 5])
+ax.set_zlim(-5, 5)
 plt.show()

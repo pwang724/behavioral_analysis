@@ -40,7 +40,7 @@ objp, lpt, rpt, wh = tools.get_stereo_points(image_dict[c.CAM_ONE_ORIENT],
                                              image_dict[c.CAM_TWO_ORIENT],
                                              draw=False)
 
-mat = np.array([[0, 1, 0], [0, 0, -1], [1, 0, 0]]).astype(np.float32)
+mat = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]]).astype(np.float32)
 xyz = np.matmul(mat, xyz)
 
 for fname in image_dict[c.CAM_ONE_ORIENT]:
@@ -75,10 +75,3 @@ for fname in image_dict[c.CAM_ONE_ORIENT]:
             cv2.imwrite(fname[:6] + '.png', img)
 
 # cv2.destroyAllWindows()
-
-
-#TODO: coordinate conversion
-# 0 -> 2
-# 1 -> 0
-# 2 -> 1
-# then -1 * y (second axis)
