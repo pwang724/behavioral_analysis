@@ -4,13 +4,13 @@ import os
 import glob
 import imageio
 
-parent_dir = r'C:\Users\Peter\Desktop\DLC'
-project_dir = os.path.join(parent_dir, 'project')
-image_dir = os.path.join(parent_dir, 'test')
-
-parent_directory = r'C:\Users\Peter\Desktop\DLC'
-config_path = os.path.join(parent_directory,
-                           "project-pw-2021-02-24\config.yaml")
+# parent_dir = r'C:\Users\Peter\Desktop\DLC'
+# project_dir = os.path.join(parent_dir, 'project')
+# image_dir = os.path.join(parent_dir, 'test')
+#
+# parent_directory = r'C:\Users\Peter\Desktop\DLC'
+# config_path = os.path.join(parent_directory,
+#                            "project-pw-2021-02-24\config.yaml")
 
 # dlc.analyze_videos(config_path, videos=[video_path], videotype='avi')
 #
@@ -30,4 +30,5 @@ config_path = os.path.join(parent_directory,
 #
 # dlc.extract_frames()
 
-dlc.create_training_dataset(config_path)
+# dlc.create_training_dataset(config_path)
+
