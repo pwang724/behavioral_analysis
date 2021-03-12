@@ -241,7 +241,8 @@ if __name__ == '__main__':
                     step=step,
                     gm2=gm2,
                     gm3=gm3,
-                    displayiters=100)
+                    displayiters=100,
+                    saveiters=1000)
 
         snapshot = 'snapshot-step{}-final--0'.format(step)
 
@@ -289,7 +290,8 @@ if __name__ == '__main__':
                 clip =VideoFileClip(str(video_file))
                 if clip.duration > 10:
                     clip = clip.subclip(10)
-                video_file_name = video_file.rsplit('/', 1)[-1].rsplit('.',1)[0] + '.mp4'
+                video_file_name = \
+                    video_file.rsplit('/', 1)[-1].rsplit('.',1)[0] + '.mp4'
                 print('\nwriting {}'.format(video_file_name))
                 clip.write_videofile(video_file_name)
                 output_dir = os.getcwd() + '/'
