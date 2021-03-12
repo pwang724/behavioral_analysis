@@ -14,24 +14,31 @@ def get_stereo_points(left_images, right_images, draw):
     objp[:, :2] = np.mgrid[0:c.CHECKER_ROWS, 0:c.CHECKER_COLS].T.reshape(-1, 2)
     objp *= c.GRID_SPACING_MM
 
-    for left_name, right_name in zip(left_images, right_images):
+    for i, (left_name, right_name) in enumerate(zip(left_images, right_images)):
         left_img = cv2.imread(left_name)
         left_gray = cv2.cvtColor(left_img, cv2.COLOR_BGR2GRAY)
         left_ret, left_corners = cv2.findChessboardCorners(
             left_gray, (c.CHECKER_ROWS, c.CHECKER_COLS), None)
 
-        if left_corners[0, 0, 0] > left_corners[-1, 0, 0]:
-            left_corners = left_corners[::-1,:,:]
-        left_corners = left_corners.astype(np.float32)
+        print(i)
+        if left_ret:
+            if left_corners[0, 0, 0] > left_corners[-1, 0, 0]:
+                left_corners = left_corners[::-1,:,:]
+            left_corners = left_corners.astype(np.float32)
+        else:
+            print('left bad')
 
         right_img = cv2.imread(right_name)
         right_gray = cv2.cvtColor(right_img, cv2.COLOR_BGR2GRAY)
         right_ret, right_corners = cv2.findChessboardCorners(
             right_gray, (c.CHECKER_ROWS, c.CHECKER_COLS), None)
 
-        if right_corners[0, 0, 0] > right_corners[-1, 0, 0]:
-            right_corners = right_corners[::-1,:,:]
-        right_corners = right_corners.astype(np.float32)
+        if right_ret:
+            if right_corners[0, 0, 0] > right_corners[-1, 0, 0]:
+                right_corners = right_corners[::-1,:,:]
+            right_corners = right_corners.astype(np.float32)
+        else:
+            print('right bad')
 
         if left_ret and right_ret:
             objpoints.append(objp)

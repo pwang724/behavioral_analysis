@@ -81,10 +81,10 @@ def main():
     parser = argparse.ArgumentParser(description="generate camera-calibration pattern", add_help=False)
     parser.add_argument("-H", "--help", help="show help", action="store_true", dest="show_help")
     parser.add_argument("-o", "--output", help="output file", default="out.svg", action="store", dest="output")
-    parser.add_argument("-c", "--columns", help="pattern columns", default="8", action="store", dest="columns",
+    parser.add_argument("-c", "--columns", help="pattern columns", default="7", action="store", dest="columns",
                         type=int)
-    parser.add_argument("-r", "--rows", help="pattern rows", default="11", action="store", dest="rows", type=int)
-    parser.add_argument("-T", "--type", help="type of pattern", default="circles", action="store", dest="p_type",
+    parser.add_argument("-r", "--rows", help="pattern rows", default="10", action="store", dest="rows", type=int)
+    parser.add_argument("-T", "--type", help="type of pattern", default="checkerboard", action="store", dest="p_type",
                         choices=["circles", "acircles", "checkerboard"])
     parser.add_argument("-u", "--units", help="length unit", default="mm", action="store", dest="units",
                         choices=["mm", "inches", "px", "m"])

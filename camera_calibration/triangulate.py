@@ -26,6 +26,7 @@ for image_wc in [c.CAM_ONE_ORIENT, c.CAM_TWO_ORIENT]:
               image_wc in im]
     bad_images = [image_wc + ix + '.jpg' for ix in bad_ixs]
     good_images = sorted(list(set(images) - set(bad_images)))
+    good_images = good_images[::75]
     image_dict[image_wc] = [os.path.join(c.IM_DIR, x) for x in good_images]
 
 objp, lpt, rpt, wh = tools.get_stereo_points(image_dict[c.CAM_ONE_ORIENT],

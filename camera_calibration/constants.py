@@ -11,14 +11,14 @@ STEREO_CRIT = (
 STEREO_FLAGS = cv2.CALIB_FIX_INTRINSIC
 
 CHECKER_ROWS = 6
-CHECKER_COLS = 8
+CHECKER_COLS = 9
 NUM_SQUARES = CHECKER_ROWS * CHECKER_COLS
 
 WINDOW_SIZE = (7, 7)
 
 OUTPUT_FOLDER_NAME = 'outputs'
-IM_EXTENSION = 'png'
-IM_DIR = r'..\camera_calibration\images'
-CAM_ONE_ORIENT = 'front'
-CAM_TWO_ORIENT = 'side'
+IM_EXTENSION = 'jpg'
+IM_DIR = r'C:\Users\Peter_Wang_Alienware\Desktop\anipose\calibration\images'
+CAM_ONE_ORIENT = 'CAM0'
+CAM_TWO_ORIENT = 'CAM1'
 GRID_SPACING_MM = 3
