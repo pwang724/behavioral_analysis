@@ -132,7 +132,9 @@ def process_session(config, session_path):
 
     videos = glob(os.path.join(calibration_path,
                                pipeline_calibration_videos,
-                               '*.'+video_ext))
+                               '*.MOV'
+                               # +video_ext
+                               ))
     videos = sorted(videos)
 
 

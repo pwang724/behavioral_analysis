@@ -60,9 +60,12 @@ def process_session(config, session_path):
                 print(video)
             with redirect_stdout(trap):
                 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-                deeplabcut.analyze_videos(config_name, batch,
-                                          videotype=video_ext, save_as_csv=False,
-                                          destfolder=outdir, TFGPUinference=False)
+                deeplabcut.analyze_videos(config_name,
+                                          batch,
+                                          videotype=video_ext,
+                                          save_as_csv=True,
+                                          destfolder=outdir,
+                                          TFGPUinference=True)
             for video in batch:
                 basename = os.path.basename(video)
                 basename, ext = os.path.splitext(basename)

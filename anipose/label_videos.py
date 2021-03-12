@@ -23,13 +23,14 @@ def connect(img, points, bps, bodyparts, col=(0,255,0,255)):
             continue
         pa = tuple(np.int32(points[a]))
         pb = tuple(np.int32(points[b]))
-        cv2.line(img, tuple(pa), tuple(pb), col, 4)
+        cv2.line(img, tuple(pa), tuple(pb), col, 1)
 
 def connect_all(img, points, scheme, bodyparts):
     cmap = get_cmap('tab10')
     for cnum, bps in enumerate(scheme):
         col = cmap(cnum % 10, bytes=True)
         col = [int(c) for c in col]
+        col = [255, 255, 255, 255]
         connect(img, points, bps, bodyparts, col)
 
 
@@ -48,7 +49,7 @@ def label_frame(img, points, scheme, bodyparts, cmap='tab10'):
         y = int(round(y))
         col = cmap_c(lnum % 10, bytes=True)
         col = [int(c) for c in col]
-        cv2.circle(img,(x,y), 7, col[:3], -1)
+        cv2.circle(img,(x,y), 1, col[:3], -1)
 
     return img
 
@@ -84,8 +85,10 @@ def visualize_labels(config, labels_fname, vid_fname, outname):
         # '-hwaccel': 'auto',
         '-framerate': str(fps),
     }, outputdict={
-        '-vcodec': 'h264', '-qp': '28',
-        '-pix_fmt': 'yuv420p', # to support more players
+        '-vcodec': 'mjpeg',
+        '-qp': '28',
+        '-qscale': '0',
+        '-pix_fmt': 'yuvj420p', # to support more players
         '-vf': 'pad=ceil(iw/2)*2:ceil(ih/2)*2' # to handle width/height not divisible by 2
     })
 
@@ -148,7 +151,7 @@ def process_session(config, session_path, filtered=False):
         basename = os.path.basename(fname)
         basename = os.path.splitext(basename)[0]
 
-        out_fname = os.path.join(outdir, basename+'.mp4')
+        out_fname = os.path.join(outdir, basename+'.avi')
         vidname = os.path.join(session_path, pipeline_videos_raw, basename+'.'+video_ext)
 
         if os.path.exists(vidname):
