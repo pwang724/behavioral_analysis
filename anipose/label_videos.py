@@ -23,14 +23,18 @@ def connect(img, points, bps, bodyparts, col=(0,255,0,255)):
             continue
         pa = tuple(np.int32(points[a]))
         pb = tuple(np.int32(points[b]))
-        cv2.line(img, tuple(pa), tuple(pb), col, 1)
+        cv2.line(img,
+                 pt1=tuple(pa),
+                 pt2=tuple(pb),
+                 color=col,
+                 thickness=2)
 
 def connect_all(img, points, scheme, bodyparts):
     cmap = get_cmap('tab10')
     for cnum, bps in enumerate(scheme):
         col = cmap(cnum % 10, bytes=True)
         col = [int(c) for c in col]
-        col = [255, 255, 255, 255]
+        # col = [255, 255, 255, 255]
         connect(img, points, bps, bodyparts, col)
 
 
@@ -49,7 +53,11 @@ def label_frame(img, points, scheme, bodyparts, cmap='tab10'):
         y = int(round(y))
         col = cmap_c(lnum % 10, bytes=True)
         col = [int(c) for c in col]
-        cv2.circle(img,(x,y), 1, col[:3], -1)
+        cv2.circle(img=img,
+                   center=(x,y),
+                   radius=1,
+                   color=col[:3],
+                   thickness=-1)
 
     return img
 

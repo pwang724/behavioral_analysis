@@ -304,7 +304,7 @@ def get_projected_points(config, pose_fname, cgroup, offsets_dict):
     n_cams = len(cgroup.cameras)
 
     all_points_flat = all_points.reshape(-1, 3)
-    all_points_flat_t = (all_points_flat + center).dot(np.linalg.inv(M.T))
+    all_points_flat_t = all_points_flat.dot(np.linalg.inv(M.T)) + center
 
     points_2d_proj_flat = cgroup.project(all_points_flat_t)
     points_2d_proj = points_2d_proj_flat.reshape(n_cams, n_joints, n_frames, 2)
@@ -379,7 +379,7 @@ def visualize_combined(config, pose_fname, cgroup, offsets_dict,
         ang_values_padded[name] = np.pad(angles, pad_size,
                                          mode='constant', constant_values=np.nan)
 
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fourcc = cv2.VideoWriter_fourcc(*'mjpg')
     writer = cv2.VideoWriter(out_fname, fourcc, round(fps, ndigits=2),
                              (pp['width_total'], pp['height_total']))
 
@@ -441,7 +441,7 @@ def process_session(config, session_path):
     #                                   pipeline_videos_labeled_2d, "*.avi"))
 
     vid_fnames_3d = glob(os.path.join(session_path,
-                                      pipeline_videos_labeled_3d, "*.mp4"))
+                                      pipeline_videos_labeled_3d, "*.avi"))
     vid_fnames_3d = sorted(vid_fnames_3d, key=natural_keys)
 
     fnames_2d = defaultdict(list)
@@ -475,7 +475,7 @@ def process_session(config, session_path):
     for vid_fname in vid_fnames_3d:
         basename = true_basename(vid_fname)
 
-        out_fname = os.path.join(outdir, basename+'.mp4')
+        out_fname = os.path.join(outdir, basename+'.avi')
         pose_fname = os.path.join(session_path, pipeline_pose_3d, basename+'.csv')
 
         if os.path.exists(out_fname) and \

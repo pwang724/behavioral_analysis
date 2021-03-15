@@ -18,7 +18,7 @@ WINDOW_SIZE = (7, 7)
 
 OUTPUT_FOLDER_NAME = 'outputs'
 IM_EXTENSION = 'jpg'
-IM_DIR = r'C:\Users\Peter_Wang_Alienware\Desktop\anipose\calibration\images'
-CAM_ONE_ORIENT = 'CAM0'
-CAM_TWO_ORIENT = 'CAM1'
-GRID_SPACING_MM = 3
+IM_DIR = r'C:\Users\Peter\Desktop\anipose\reach-unfilled\date\calibration\images'
+CAM_ONE_ORIENT = 'CAM_0'
+CAM_TWO_ORIENT = 'CAM_1'
+GRID_SPACING_MM = 1

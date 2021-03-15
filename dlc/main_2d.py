@@ -28,9 +28,9 @@ if __name__ == '__main__':
     orientation = 'FRONT'
     parent_directory = r'C:\Users\Peter\Desktop\DLC'
     project_path = os.path.join(parent_directory,
-                                f'M2_M4_M5_M9_{orientation}-pw-2021-03-08')
+                                f'calibration-pw-2021-03-13')
     config_path = os.path.join(project_path, 'config.yaml')
-    video_path = os.path.join(project_path, 'videos_validation')
+    video_path = os.path.join(project_path, 'videos')
 
     # # Get images
     # selection_dict = {
@@ -51,9 +51,15 @@ if __name__ == '__main__':
     # list_of_avis = list(itertools.chain(*dict_of_avis.values()))
     # pprint.pprint(list_of_avis)
 
+    # video_dir = r'C:\Users\Peter\Desktop\anipose\reach-unfilled\date' \
+    #             r'\calibration'
+    # videos = ['DATA_CALIBRATION_00018_CAM_0.avi',
+    #           'DATA_CALIBRATION_00018_CAM_1.avi']
+    # list_of_avis = [os.path.join(video_dir, x) for x in videos]
+    #
     # # Create project
     # config_path = dlc.create_new_project(
-    #     f'M2_M4_M5_M9_{orientation}',
+    #     'calibration',
     #     'pw',
     #     videos=list_of_avis,
     #     copy_videos=True,

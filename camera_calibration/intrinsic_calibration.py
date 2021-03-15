@@ -52,13 +52,13 @@ stereo_retval, lmat1, ldist1, rmat1, rdist1, R, T, E, F = \
 # Compute projection
 reference_ix = 0
 lproj = tools.compute_projection_matrix(lmat,
-                                        rvec=lrot[0],
-                                        tvec=ltrans[0],
+                                        rvec=lrot[reference_ix],
+                                        tvec=ltrans[reference_ix],
                                         rodrigues=True)
 
 rproj = tools.compute_projection_matrix(rmat,
-                                        rvec=rrot[0],
-                                        tvec=rtrans[0],
+                                        rvec=rrot[reference_ix],
+                                        tvec=rtrans[reference_ix],
                                         rodrigues=True)
 
 yaml_dict = {'lrms': lrms,

@@ -31,6 +31,18 @@ def get_median(all_points_3d, ix):
     return np.median(pts, axis=0)
 
 
+def correct_saved_frame(all_points_3d):
+    M = np.array([
+        [0.9688485, -0.01911455, -0.2469154],
+        [-0.20716033, 0.48379578, -0.8503095],
+        [-0.13570992, -0.87497216, -0.46476504]
+    ])
+    center = np.array([0.95711798, -3.12184819, 46.3463851])
+    # center = np.array([-11.13345884, 40.82913059, -19.21951454])
+    all_points_3d_adj = (all_points_3d - center).dot(M.T)
+    return all_points_3d_adj, M, center
+
+
 def correct_coordinate_frame(config, all_points_3d, bodyparts):
     """Given a config and a set of points and bodypart names, this function will rotate the coordinate frame to match the one in config"""
     bp_index = dict(zip(bodyparts, range(len(bodyparts))))
@@ -70,12 +82,11 @@ def correct_coordinate_frame(config, all_points_3d, bodyparts):
     M /= np.linalg.norm(M, axis=1)[:,None]
 
     center = get_median(all_points_3d, bp_index[ref_point])
+    all_points_3d_adj = all_points_3d.dot(M.T) - center
 
-    all_points_3d_adj = all_points_3d.dot(M.T)
-    center_new = get_median(all_points_3d_adj, bp_index[ref_point])
-    all_points_3d_adj = all_points_3d_adj - center_new
-
-    return all_points_3d_adj, M, center_new
+    # center_new = get_median(all_points_3d_adj, bp_index[ref_point])
+    # all_points_3d_adj = all_points_3d_adj - center_new
+    return all_points_3d_adj, M, center
 
 
 def load_pose2d_fnames(fname_dict, offsets_dict=None, cam_names=None):
@@ -268,6 +279,9 @@ def triangulate(config,
 
     if 'reference_point' in config['triangulation'] and 'axes' in config['triangulation']:
         all_points_3d_adj, M, center = correct_coordinate_frame(config, all_points_3d, bodyparts)
+    elif 'use_saved_reference' in config['triangulation']:
+        print('USING SAVED REFERENCE R/T')
+        all_points_3d_adj, M, center = correct_saved_frame(all_points_3d)
     else:
         all_points_3d_adj = all_points_3d
         M = np.identity(3)

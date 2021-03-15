@@ -1,41 +1,37 @@
-#!/usr/bin/env python3
-
-from mayavi import mlab
-mlab.options.offscreen = True
-
 import numpy as np
 from glob import glob
 import pandas as pd
 import os.path
-import cv2
-import sys
-import skvideo.io
-from tqdm import tqdm, trange
-import sys
 from collections import defaultdict
 from matplotlib.pyplot import get_cmap
-
+import matplotlib.pyplot as plt
+from matplotlib import animation
 from .common import make_process_fun, get_nframes, get_video_name, get_video_params, get_data_length, natural_keys
 
 
-def connect(points, bps, bp_dict, color):
+def connect(points, bps, bp_dict, color, plot_args):
     ixs = [bp_dict[bp] for bp in bps]
-    return mlab.plot3d(points[ixs, 0], points[ixs, 1], points[ixs, 2],
-                       np.ones(len(ixs)), reset_zoom=False,
-                       color=color, tube_radius=None, line_width=10)
+    ax = plt.gca()
+    return ax.plot(xs=points[ixs, 0],
+                   ys=points[ixs, 1],
+                   zs=points[ixs, 2],
+                   color=color,
+                   **plot_args
+                   )
 
-def connect_all(points, scheme, bp_dict, cmap):
+def connect_all(points, scheme, bp_dict, cmap, plot_args):
     lines = []
     for i, bps in enumerate(scheme):
-        line = connect(points, bps, bp_dict, color=cmap(i)[:3])
+        line, = connect(points, bps, bp_dict,
+                        color=cmap(i)[:3],
+                        plot_args=plot_args)
         lines.append(line)
     return lines
 
 def update_line(line, points, bps, bp_dict):
     ixs = [bp_dict[bp] for bp in bps]
-    # ixs = [bodyparts.index(bp) for bp in bps]
-    new = np.vstack([points[ixs, 0], points[ixs, 1], points[ixs, 2]]).T
-    line.mlab_source.points = new
+    new = np.vstack([points[ixs, 0], points[ixs, 1], points[ixs, 2]])
+    line.set_data_3d(new)
 
 def update_all_lines(lines, points, scheme, bp_dict):
     for line, bps in zip(lines, scheme):
@@ -44,7 +40,6 @@ def update_all_lines(lines, points, scheme, bp_dict):
 
 
 def visualize_labels(config, labels_fname, outname, fps=300):
-
     try:
         scheme = config['labeling']['scheme']
     except KeyError:
@@ -84,70 +79,71 @@ def visualize_labels(config, labels_fname, outname, fps=300):
         print('too few points to plot, skipping...')
         return
     
-    low, high = np.percentile(all_points_flat[check], [5, 95], axis=0)
+    low, high = np.percentile(all_points_flat[check], [10, 90], axis=0)
 
     nparts = len(bodyparts)
     framedict = dict(zip(data['fnum'], data.index))
 
-    writer = skvideo.io.FFmpegWriter(outname, inputdict={
-        # '-hwaccel': 'auto',
-        '-framerate': str(fps),
-    }, outputdict={
-        '-vcodec': 'h264', '-qp': '28', '-pix_fmt': 'yuv420p'
-    })
-
-    cmap = get_cmap('tab10')
-
-
-    points = np.copy(all_points[:, 20])
+    points_cmap = get_cmap('tab10')
+    lines_cmap = get_cmap('tab10')
+    points = np.copy(all_points[:, 0])
     points[0] = low
     points[1] = high
 
-    s = np.arange(points.shape[0])
-    good = ~np.isnan(points[:, 0])
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
 
-    fig = mlab.figure(bgcolor=(1,1,1), size=(500,500))
-    fig.scene.anti_aliasing_frames = 2
+    # Get rid of colored axes planes
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.zaxis.pane.fill = False
 
-    low, high = np.percentile(points[good, 0], [10,90])
-    scale_factor = (high - low) / 12.0
+    # Now set color to white (or whatever is "invisible")
+    ax.xaxis.pane.set_edgecolor('w')
+    ax.yaxis.pane.set_edgecolor('w')
+    ax.zaxis.pane.set_edgecolor('w')
 
-    mlab.clf()
-    pts = mlab.points3d(points[:, 0], points[:, 1], points[:, 2], s,
-                        color=(0.8, 0.8, 0.8),
-                        scale_mode='none', scale_factor=scale_factor)
-    lines = connect_all(points, scheme, bp_dict, cmap)
-    mlab.orientation_axes()
+    # Bonus: To get rid of the grid as well:
+    ax.grid(False)
 
-    view = list(mlab.view())
+    # ax.set_xlim3d(-255, 255)
+    # ax.set_ylim3d(-255, 255)
+    # ax.set_zlim3d(-255, 255)
 
-    mlab.view(focalpoint='auto', distance='auto')
+    pts = ax.scatter(xs=points[:, 0],
+                     ys=points[:, 1],
+                     zs=points[:, 2],
+                     c=[points_cmap(i)[:3] for i in range(points.shape[0])]
+                     )
+    text = fig.text(0, 1, "TEXT", va='top')
+    lines = connect_all(points, scheme, bp_dict, lines_cmap, plot_args={})
+    ax.view_init(elev=22, azim=77)
+    ax.invert_xaxis()
 
-    for framenum in trange(data.shape[0], ncols=70):
-        fig.scene.disable_render = True
-
+    def animate(framenum):
+        text.set_text(f'{framenum}')
         if framenum in framedict:
             points = all_points[:, framenum]
         else:
             points = np.ones((nparts, 3))*np.nan
-
-        s = np.arange(points.shape[0])
-        good = ~np.isnan(points[:, 0])
-
-        new = np.vstack([points[:, 0], points[:, 1], points[:, 2]]).T
-        pts.mlab_source.points = new
+        pts._offsets3d = (points[:,0], points[:,1], points[:,2])
         update_all_lines(lines, points, scheme, bp_dict)
+        return (pts, *lines)
 
-        fig.scene.disable_render = False
-
-        img = mlab.screenshot()
-
-        mlab.view(*view, reset_roll=False)
-
-        writer.writeFrame(img)
-
-    mlab.close(all=True)
-    writer.close()
+    anim = animation.FuncAnimation(fig,
+                                   animate,
+                                   blit=False,
+                                   frames=all_points.shape[1])
+    anim.save(outname,
+              fps=fps,
+              extra_args=['-vcodec', 'mjpeg',
+                          '-qscale', '0',
+                          '-pix_fmt', 'yuvj420p',
+                          # '-format', 'auto'
+                          ])
 
 
 
@@ -184,7 +180,7 @@ def process_session(config, session_path, filtered=False):
         basename = os.path.basename(fname)
         basename = os.path.splitext(basename)[0]
 
-        out_fname = os.path.join(outdir, basename+'.mp4')
+        out_fname = os.path.join(outdir, basename+'.avi')
 
         if os.path.exists(out_fname) and \
            abs(get_nframes(out_fname) - get_data_length(fname)) < 100:
