@@ -11,7 +11,6 @@ DEFAULT_CONFIG = {
     'video_extension': 'avi',
     'calibration': {
         'animal_calibration': False,
-        'calibration_init': None,
         'fisheye': False
     },
     'manual_verification': {

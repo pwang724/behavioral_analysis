@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-# tf.config.experimental.list_physical_devices()
+# tf2
+tf.config.experimental.list_physical_devices()
 
-sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
-
-import anipose.anipose as anipose
+# tf1
+# sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))

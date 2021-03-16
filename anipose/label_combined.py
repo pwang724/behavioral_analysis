@@ -5,18 +5,19 @@ from glob import glob
 import pandas as pd
 import os.path
 import cv2
-from tqdm import tqdm, trange
+from tqdm import trange
 from collections import defaultdict
 from scipy import signal
 import queue
 import threading
-
+import tools
 from aniposelib.cameras import CameraGroup
+from anipose_scripts import constants
 
 from .common import make_process_fun, get_nframes, \
     get_video_name, get_cam_name, \
-    get_video_params, get_video_params_cap, \
-    get_data_length, natural_keys, true_basename, find_calibration_folder
+    get_video_params_cap, \
+    natural_keys, true_basename, find_calibration_folder
 
 from .triangulate import load_offsets_dict
 
@@ -205,11 +206,11 @@ def get_plotting_params(caps_2d, cap_3d, ang_names=[]):
 def get_start_image(pp, ang_names=[]):
 
     start_img = np.zeros((pp['height_total'], pp['width_total'], 3), dtype='uint8')
-    start_img[:] = 255
+    start_img[:] = 0
 
     for angnum, name in enumerate(ang_names):
         start_y = pp['start_angles'] + (pp['height_angle'] + pp['spacing_angle'])*angnum
-        rect = (150, pp['width_total']-100, start_y, start_y + pp['height_angle'])
+        rect = (0, pp['width_total'], start_y, start_y + pp['height_angle'])
 
         font_size, baseline = cv2.getTextSize(
             name, pp['font_face'], pp['font_scale'], pp['font_thickness'])
@@ -265,12 +266,7 @@ def draw_data(start_img, frames_2d, frame_3d, all_angles, pp):
     return imout
 
 ## TODO: remove this function and import from project_2d.py
-def get_projected_points(config, pose_fname, cgroup, offsets_dict):
-    try:
-        scheme = config['labeling']['scheme']
-    except KeyError:
-        scheme = []
-
+def get_projected_points(scheme, optim, pose_fname, cgroup, offsets_dict):
     pose_data = pd.read_csv(pose_fname)
     cols = [x for x in pose_data.columns if '_error' in x]
     if len(scheme) == 0:
@@ -293,11 +289,23 @@ def get_projected_points(config, pose_fname, cgroup, offsets_dict):
     all_errors = np.array([np.array(pose_data.loc[:, bp+'_error'])
                            for bp in bodyparts])
 
-    if config['triangulation']['optim']:
+    all_scores = np.array([np.array(pose_data.loc[:, bp+'_score'])
+                           for bp in bodyparts], dtype='float64')
+
+    if optim:
         all_errors[np.isnan(all_errors)] = 0
     else:
         all_errors[np.isnan(all_errors)] = 10000
-    good = (all_errors < 100)
+    good1 = all_errors < 100
+    all_scores[np.isnan(all_scores)] = 0
+    good2 = np.zeros_like(all_scores)
+    for i, scores in enumerate(all_scores):
+        if 'pellet' in bodyparts[i]:
+            threshold = 0.9
+        else:
+            threshold = 0.
+        good2[i] = scores > threshold
+    good = np.logical_and(good1, good2)
     all_points[~good] = np.nan
 
     n_joints, n_frames, _ = all_points.shape
@@ -324,12 +332,18 @@ def draw_projected_points(frames_2d, scheme, bodyparts, points):
     out = []
     for cix, frame in enumerate(frames_2d):
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_out = label_frame(img, points[cix], scheme, bodyparts)
+        frame_out = label_frame(img,
+                                points[cix],
+                                scheme,
+                                bodyparts,
+                                constants.colors,
+                                constants.sizes
+                                )
         img_out = cv2.cvtColor(frame_out, cv2.COLOR_RGB2BGR)
         out.append(img_out)
     return out
 
-def visualize_combined(config, pose_fname, cgroup, offsets_dict,
+def visualize_combined(scheme, optim, pose_fname, cgroup, offsets_dict,
                        fnames_2d, fname_3d, out_fname):
 
     should_load_3d = (cgroup is not None) and \
@@ -337,7 +351,11 @@ def visualize_combined(config, pose_fname, cgroup, offsets_dict,
         (offsets_dict is not None)
 
     if should_load_3d:
-        scheme, bodyparts, points_2d_proj = get_projected_points(config, pose_fname, cgroup, offsets_dict)
+        scheme, bodyparts, points_2d_proj = get_projected_points(scheme,
+                                                                 optim,
+                                                                 pose_fname,
+                                                                 cgroup,
+                                                                 offsets_dict)
 
     # if angle_fname is not None:
     #     angles = pd.read_csv(angle_fname)
@@ -512,3 +530,70 @@ def process_session(config, session_path):
 
 
 label_combined_all = make_process_fun(process_session)
+
+
+def process_peter(scheme,
+                  optim,
+                  calib_folder,
+                  video_folder,
+                  pose_3d_folder,
+                  video_3d_folder,
+                  out_folder,
+                  cam_regex,
+                  video_ext):
+
+    vid_fnames_2d = glob(os.path.join(video_folder, "*." + video_ext))
+    vid_fnames_3d = glob(os.path.join(video_3d_folder, "*."+video_ext))
+    vid_fnames_3d = sorted(vid_fnames_3d, key=natural_keys)
+
+    fnames_2d = defaultdict(list)
+    for vid in vid_fnames_2d:
+        vidname = tools.get_video_name(cam_regex, vid)
+        fnames_2d[vidname].append(vid)
+
+    fnames_3d = defaultdict(list)
+    for vid in vid_fnames_3d:
+        vidname = true_basename(vid)
+        fnames_3d[vidname].append(vid)
+
+    calib_fname = os.path.join(calib_folder, 'calibration.toml')
+    cgroup = CameraGroup.load(calib_fname)
+
+    if len(vid_fnames_3d) > 0:
+        os.makedirs(out_folder, exist_ok=True)
+
+    for vid_fname in vid_fnames_3d:
+        basename = true_basename(vid_fname)
+
+        out_fname = os.path.join(out_folder, basename + "." + video_ext)
+        pose_fname = os.path.join(pose_3d_folder, basename + ".csv")
+
+        if not os.path.exists(pose_fname):
+            print(out_fname, 'missing 3d data')
+            continue
+
+        if len(fnames_2d[basename]) == 0:
+            print(out_fname, 'missing 2d videos')
+            continue
+
+        if len(fnames_3d[basename]) == 0:
+            print(out_fname, 'missing 3d videos')
+            continue
+
+        fname_3d_current = fnames_3d[basename][0]
+        fnames_2d_current = fnames_2d[basename]
+        fnames_2d_current = sorted(fnames_2d_current, key=natural_keys)
+        cam_names = [tools.get_cam_name(cam_regex, fname) for fname in
+                     fnames_2d_current]
+        offsets_dict = load_offsets_dict({}, cam_names, video_folder)
+        cgroup_subset = cgroup.subset_cameras_names(cam_names)
+
+        visualize_combined(scheme,
+                           optim,
+                           pose_fname,
+                           cgroup_subset,
+                           offsets_dict,
+                           fnames_2d_current,
+                           fname_3d_current,
+                           out_fname)
+

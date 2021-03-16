@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 
 import os.path
-
-# Dependencies for video:
 import os
 from glob import glob
 import io
 from contextlib import redirect_stdout
-
-from .common import natural_keys, make_process_fun
 
 def rename_dlc_files(folder, base):
     files = glob(os.path.join(folder, base+'*'))
@@ -19,57 +15,28 @@ def rename_dlc_files(folder, base):
                   os.path.join(folder, base + ext))
 
 
-def process_session(config, session_path):
-    pipeline_videos_raw = config['pipeline']['videos_raw']
-    pipeline_pose = config['pipeline']['pose_2d']
-    video_ext = config['video_extension']
+def process_peter(videos,
+                  model_folder,
+                  out_folder,
+                  video_type='avi'):
+    os.makedirs(out_folder, exist_ok=True)
+    config_name = os.path.join(model_folder, 'config.yaml')
 
-    config_name = os.path.join(config['model_folder'], 'config.yaml')
-
-    source_folder = os.path.join(session_path, pipeline_videos_raw)
-    outdir = os.path.join(session_path, pipeline_pose)
-
-    videos = glob(os.path.join(source_folder, '*.'+video_ext))
-    videos = sorted(videos, key=natural_keys)
-
-    if len(videos) > 0:
-        os.makedirs(outdir, exist_ok=True)
-
-    videos_to_process = []
-    for video in videos:
-        basename = os.path.basename(video)
-        basename, ext = os.path.splitext(basename)
-
-        dataname = os.path.join(outdir, basename + '.h5')
-        if os.path.exists(dataname):
-            continue
-        else:
-            rename_dlc_files(outdir, basename) # try renaming in case it processed before
-            if os.path.exists(dataname):
-                print(video)
-                continue
-            else:
-                videos_to_process.append(video)
-
-    if len(videos_to_process) > 0:
-        import deeplabcut
-        trap = io.StringIO()
-        for i in range(0, len(videos_to_process), 5):
-            batch = videos_to_process[i:i+5]
-            for video in batch:
-                print(video)
-            with redirect_stdout(trap):
-                os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-                deeplabcut.analyze_videos(config_name,
-                                          batch,
-                                          videotype=video_ext,
-                                          save_as_csv=True,
-                                          destfolder=outdir,
-                                          TFGPUinference=True)
-            for video in batch:
-                basename = os.path.basename(video)
-                basename, ext = os.path.splitext(basename)
-                rename_dlc_files(outdir, basename)
-
-
-pose_videos_all = make_process_fun(process_session)
+    import deeplabcut
+    trap = io.StringIO()
+    for i in range(0, len(videos), 5):
+        batch = videos[i:i + 5]
+        for video in batch:
+            print(video)
+        with redirect_stdout(trap):
+            os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+            deeplabcut.analyze_videos(config_name,
+                                      batch,
+                                      videotype=video_type,
+                                      save_as_csv=True,
+                                      destfolder=out_folder,
+                                      TFGPUinference=True)
+        for video in batch:
+            basename = os.path.basename(video)
+            basename, ext = os.path.splitext(basename)
+            rename_dlc_files(out_folder, basename)

@@ -1,28 +1,7 @@
 import deeplabcut as dlc
 # import deeplabcutcore as dlccore
-import numpy as np
 import os
-import glob
-import imageio
-import itertools
-import dlc.tools as tools
-import pprint
-
-
-def get_files(source, wcs):
-    matches = []
-    for root, dirnames, filenames in os.walk(source):
-        for filename in filenames:
-            if filename.endswith(wcs):
-                matches.append(os.path.join(root, filename))
-    return matches
-
-def print_dict(ddict, length=True):
-    for k, v in ddict.items():
-        if length:
-            print(f'{k}: {len(v)}')
-        else:
-            print(f'{k}: {v}')
+import tools
 
 if __name__ == '__main__':
     orientation = 'FRONT'

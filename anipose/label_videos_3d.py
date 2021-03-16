@@ -6,12 +6,15 @@ from collections import defaultdict
 from matplotlib.pyplot import get_cmap
 import matplotlib.pyplot as plt
 from matplotlib import animation
-from .common import make_process_fun, get_nframes, get_video_name, get_video_params, get_data_length, natural_keys
+import tools
+from .common import get_video_params, natural_keys
+from anipose_scripts import constants
 
 
 def connect(points, bps, bp_dict, color, plot_args):
     ixs = [bp_dict[bp] for bp in bps]
     ax = plt.gca()
+
     return ax.plot(xs=points[ixs, 0],
                    ys=points[ixs, 1],
                    zs=points[ixs, 2],
@@ -23,7 +26,8 @@ def connect_all(points, scheme, bp_dict, cmap, plot_args):
     lines = []
     for i, bps in enumerate(scheme):
         line, = connect(points, bps, bp_dict,
-                        color=cmap(i)[:3],
+                        # color=cmap(i)[:3],
+                        color='white',
                         plot_args=plot_args)
         lines.append(line)
     return lines
@@ -39,12 +43,11 @@ def update_all_lines(lines, points, scheme, bp_dict):
 
 
 
-def visualize_labels(config, labels_fname, outname, fps=300):
-    try:
-        scheme = config['labeling']['scheme']
-    except KeyError:
-        scheme = []
-
+def visualize_labels(scheme,
+                     labels_fname,
+                     outname,
+                     optim,
+                     fps):
     data = pd.read_csv(labels_fname)
     cols = [x for x in data.columns if '_error' in x]
 
@@ -54,6 +57,7 @@ def visualize_labels(config, labels_fname, outname, fps=300):
         bodyparts = sorted(set([x for dx in scheme for x in dx]))
 
     bp_dict = dict(zip(bodyparts, range(len(bodyparts))))
+    bp_ix_dict = dict(zip(range(len(bodyparts)), bodyparts))
 
     all_points = np.array([np.array(data.loc[:, (bp+'_x', bp+'_y', bp+'_z')])
                            for bp in bodyparts], dtype='float64')
@@ -64,12 +68,20 @@ def visualize_labels(config, labels_fname, outname, fps=300):
     all_scores = np.array([np.array(data.loc[:, bp+'_score'])
                            for bp in bodyparts], dtype='float64')
 
-
-    if config['triangulation']['optim']:
+    if optim:
         all_errors[np.isnan(all_errors)] = 0
     else:
         all_errors[np.isnan(all_errors)] = 10000
-    good = (all_errors < 100)
+    good1 = all_errors < 100
+    all_scores[np.isnan(all_scores)] = 0
+    good2 = np.zeros_like(all_scores)
+    for i, scores in enumerate(all_scores):
+        if 'pellet' in bodyparts[i]:
+            threshold = 0.9
+        else:
+            threshold = 0.
+        good2[i] = scores > threshold
+    good = np.logical_and(good1, good2)
     all_points[~good] = np.nan
 
     all_points_flat = all_points.reshape(-1, 3)
@@ -79,17 +91,15 @@ def visualize_labels(config, labels_fname, outname, fps=300):
         print('too few points to plot, skipping...')
         return
     
-    low, high = np.percentile(all_points_flat[check], [10, 90], axis=0)
-
     nparts = len(bodyparts)
     framedict = dict(zip(data['fnum'], data.index))
 
-    points_cmap = get_cmap('tab10')
     lines_cmap = get_cmap('tab10')
     points = np.copy(all_points[:, 0])
-    points[0] = low
-    points[1] = high
+    points[np.isnan(points)] = 0
+    # points = np.ma.masked_where(np.isnan(points), points)
 
+    plt.style.use('dark_background')
     fig = plt.figure()
     ax = plt.axes(projection='3d')
     ax.set_xlabel('X')
@@ -109,17 +119,21 @@ def visualize_labels(config, labels_fname, outname, fps=300):
     # Bonus: To get rid of the grid as well:
     ax.grid(False)
 
-    # ax.set_xlim3d(-255, 255)
-    # ax.set_ylim3d(-255, 255)
-    # ax.set_zlim3d(-255, 255)
+    lim = 5
+    ax.set_xlim3d(-lim, lim)
+    ax.set_ylim3d(-lim, lim)
+    ax.set_zlim3d(-lim, lim)
 
     pts = ax.scatter(xs=points[:, 0],
                      ys=points[:, 1],
                      zs=points[:, 2],
-                     c=[points_cmap(i)[:3] for i in range(points.shape[0])]
+                     c=[constants.colors[bp][:3] / 255. for bp in bodyparts],
+                     s=[constants.sizes[bp] ** 2 for bp in bodyparts],
                      )
+
     text = fig.text(0, 1, "TEXT", va='top')
-    lines = connect_all(points, scheme, bp_dict, lines_cmap, plot_args={})
+    lines = connect_all(points, scheme, bp_dict, lines_cmap,
+                        plot_args={'linewidth':1})
     ax.view_init(elev=22, azim=77)
     ax.invert_xaxis()
 
@@ -128,8 +142,13 @@ def visualize_labels(config, labels_fname, outname, fps=300):
         if framenum in framedict:
             points = all_points[:, framenum]
         else:
-            points = np.ones((nparts, 3))*np.nan
-        pts._offsets3d = (points[:,0], points[:,1], points[:,2])
+            points = np.zeros((nparts, 3))
+
+        copy_points = np.copy(points)
+        copy_points[np.isnan(copy_points)] = 1000
+        pts._offsets3d = (copy_points[:, 0],
+                          copy_points[:, 1],
+                          copy_points[:, 2])
         update_all_lines(lines, points, scheme, bp_dict)
         return (pts, *lines)
 
@@ -142,56 +161,40 @@ def visualize_labels(config, labels_fname, outname, fps=300):
               extra_args=['-vcodec', 'mjpeg',
                           '-qscale', '0',
                           '-pix_fmt', 'yuvj420p',
-                          # '-format', 'auto'
                           ])
 
 
-
-def process_session(config, session_path, filtered=False):
-    pipeline_videos_raw = config['pipeline']['videos_raw']
-
-    if filtered:
-        pipeline_videos_labeled_3d = config['pipeline']['videos_labeled_3d_filter']
-        pipeline_3d = config['pipeline']['pose_3d_filter']
-    else:
-        pipeline_videos_labeled_3d = config['pipeline']['videos_labeled_3d']
-        pipeline_3d = config['pipeline']['pose_3d']
-
-    video_ext = config['video_extension']
-
-    vid_fnames = glob(os.path.join(session_path,
-                                   pipeline_videos_raw, "*."+video_ext))
+def process_peter(scheme,
+                  optim,
+                  video_folder,
+                  pose_3d_folder,
+                  out_folder,
+                  video_ext,
+                  cam_regex):
+    vid_fnames = glob(os.path.join(video_folder, "*."+video_ext))
     orig_fnames = defaultdict(list)
     for vid in vid_fnames:
-        vidname = get_video_name(config, vid)
+        vidname = tools.get_video_name(cam_regex, vid)
         orig_fnames[vidname].append(vid)
 
-    labels_fnames = glob(os.path.join(session_path,
-                                      pipeline_3d, '*.csv'))
+    labels_fnames = glob(os.path.join(pose_3d_folder, '*.csv'))
     labels_fnames = sorted(labels_fnames, key=natural_keys)
 
-
-    outdir = os.path.join(session_path, pipeline_videos_labeled_3d)
-
     if len(labels_fnames) > 0:
-        os.makedirs(outdir, exist_ok=True)
+        os.makedirs(out_folder, exist_ok=True)
 
     for fname in labels_fnames:
         basename = os.path.basename(fname)
         basename = os.path.splitext(basename)[0]
+        out_fname = os.path.join(out_folder, basename + '.avi')
 
-        out_fname = os.path.join(outdir, basename+'.avi')
-
-        if os.path.exists(out_fname) and \
-           abs(get_nframes(out_fname) - get_data_length(fname)) < 100:
-            continue
         print(out_fname)
 
         some_vid = orig_fnames[basename][0]
         params = get_video_params(some_vid)
 
-        visualize_labels(config, fname, out_fname, params['fps'])
-
-
-label_videos_3d_all = make_process_fun(process_session, filtered=False)
-label_videos_3d_filtered_all = make_process_fun(process_session, filtered=True)
+        visualize_labels(scheme=scheme,
+                         labels_fname=fname,
+                         outname=out_fname,
+                         optim=optim,
+                         fps=params['fps'])

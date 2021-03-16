@@ -11,6 +11,7 @@ from numpy import array as arr
 from glob import glob
 from scipy import optimize
 import cv2
+import tools
 
 from .common import make_process_fun, find_calibration_folder, \
     get_video_name, get_cam_name, natural_keys
@@ -167,7 +168,7 @@ def load_offsets_dict(config, cam_names, video_folder=None):
     return offsets_dict
 
 def load_constraints(config, bodyparts, key='constraints'):
-    constraints_names = config['triangulation'].get(key, [])
+    constraints_names = config.get(key, [])
     bp_index = dict(zip(bodyparts, range(len(bodyparts))))
     constraints = []
     for a, b in constraints_names:
@@ -179,14 +180,13 @@ def load_constraints(config, bodyparts, key='constraints'):
 
 
 def triangulate(config,
-                calib_folder, video_folder, pose_folder,
-                fname_dict, output_fname):
-
+                calib_folder,
+                video_folder,
+                fname_dict,
+                output_fname):
     cam_names = sorted(fname_dict.keys())
-
     calib_fname = os.path.join(calib_folder, 'calibration.toml')
     cgroup = CameraGroup.load(calib_fname)
-
     offsets_dict = load_offsets_dict(config, cam_names, video_folder)
 
     out = load_pose2d_fnames(fname_dict, offsets_dict, cam_names)
@@ -198,10 +198,10 @@ def triangulate(config,
 
     n_cams, n_frames, n_joints, _ = all_points_raw.shape
 
-    bad = all_scores < config['triangulation']['score_threshold']
+    bad = all_scores < config['score_threshold']
     all_points_raw[bad] = np.nan
 
-    if config['triangulation']['optim']:
+    if config['optim']:
         constraints = load_constraints(config, bodyparts)
         constraints_weak = load_constraints(config, bodyparts, 'constraints_weak')
 
@@ -209,7 +209,7 @@ def triangulate(config,
         scores_2d = all_scores
 
         points_shaped = points_2d.reshape(n_cams, n_frames*n_joints, 2)
-        if config['triangulation']['ransac']:
+        if config['ransac']:
             points_3d_init, _, _, _ = cgroup.triangulate_ransac(points_shaped, progress=True)
         else:
             points_3d_init = cgroup.triangulate(points_shaped, progress=True)
@@ -225,11 +225,11 @@ def triangulate(config,
                 constraints=constraints,
                 constraints_weak=constraints_weak,
                 # scores=scores_2d,
-                scale_smooth=config['triangulation']['scale_smooth'],
-                scale_length=config['triangulation']['scale_length'],
-                scale_length_weak=config['triangulation']['scale_length_weak'],
-                n_deriv_smooth=config['triangulation']['n_deriv_smooth'],
-                reproj_error_threshold=config['triangulation']['reproj_error_threshold'],
+                scale_smooth=config['scale_smooth'],
+                scale_length=config['scale_length'],
+                scale_length_weak=config['scale_length_weak'],
+                n_deriv_smooth=config['n_deriv_smooth'],
+                reproj_error_threshold=config['reproj_error_threshold'],
                 verbose=True)
 
         points_2d_flat = points_2d.reshape(n_cams, -1, 2)
@@ -251,7 +251,7 @@ def triangulate(config,
 
     else:
         points_2d = all_points_raw.reshape(n_cams, n_frames*n_joints, 2)
-        if config['triangulation']['ransac']:
+        if config['ransac']:
             points_3d, picked, p2ds, errors = cgroup.triangulate_ransac(
                 points_2d, min_cams=3, progress=True)
 
@@ -277,9 +277,9 @@ def triangulate(config,
         all_errors[num_cams < 2] = np.nan
         num_cams[num_cams < 2] = np.nan
 
-    if 'reference_point' in config['triangulation'] and 'axes' in config['triangulation']:
+    if 'reference_point' in config and 'axes' in config:
         all_points_3d_adj, M, center = correct_coordinate_frame(config, all_points_3d, bodyparts)
-    elif 'use_saved_reference' in config['triangulation']:
+    elif 'use_saved_reference' in config:
         print('USING SAVED REFERENCE R/T')
         all_points_3d_adj, M, center = correct_saved_frame(all_points_3d)
     else:
@@ -307,60 +307,34 @@ def triangulate(config,
     dout.to_csv(output_fname, index=False)
 
 
-def process_session(config, session_path):
-    pipeline_videos_raw = config['pipeline']['videos_raw']
-    pipeline_calibration_results = config['pipeline']['calibration_results']
-    pipeline_pose = config['pipeline']['pose_2d']
-    pipeline_pose_filter = config['pipeline']['pose_2d_filter']
-    pipeline_3d = config['pipeline']['pose_3d']
-
-    calibration_path = find_calibration_folder(config, session_path)
-    if calibration_path is None:
-        return
-
-    if config['filter']['enabled']:
-        pose_folder = os.path.join(session_path, pipeline_pose_filter)
-    else:
-        pose_folder = os.path.join(session_path, pipeline_pose)
-
-    calib_folder = os.path.join(calibration_path, pipeline_calibration_results)
-    video_folder = os.path.join(session_path, pipeline_videos_raw)
-    output_folder = os.path.join(session_path, pipeline_3d)
-
+def process_peter(triangulation_config,
+                  calib_folder,
+                  pose_folder,
+                  video_folder,
+                  output_folder,
+                  cam_regex):
+    os.makedirs(output_folder, exist_ok=True)
     pose_files = glob(os.path.join(pose_folder, '*.h5'))
 
     cam_videos = defaultdict(list)
-
     for pf in pose_files:
-        name = get_video_name(config, pf)
+        name = tools.get_video_name(cam_regex, pf)
         cam_videos[name].append(pf)
-
     vid_names = cam_videos.keys()
     vid_names = sorted(vid_names, key=natural_keys)
 
-    if len(vid_names) > 0:
-        os.makedirs(output_folder, exist_ok=True)
-
     for name in vid_names:
         fnames = cam_videos[name]
-        cam_names = [get_cam_name(config, f) for f in fnames]
+        cam_names = [tools.get_cam_name(cam_regex, f) for f in fnames]
         fname_dict = dict(zip(cam_names, fnames))
-
         output_fname = os.path.join(output_folder, name + '.csv')
 
-        print(output_fname)
-        
-        if os.path.exists(output_fname):
-            continue
-
-
         try:
-            triangulate(config,
-                        calib_folder, video_folder, pose_folder,
-                        fname_dict, output_fname)
+            triangulate(triangulation_config,
+                        calib_folder,
+                        video_folder,
+                        fname_dict,
+                        output_fname)
         except ValueError:
             import traceback, sys
             traceback.print_exc(file=sys.stdout)
-            
-
-triangulate_all = make_process_fun(process_session)
