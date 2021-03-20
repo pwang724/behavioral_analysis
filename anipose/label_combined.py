@@ -10,6 +10,8 @@ from collections import defaultdict
 from scipy import signal
 import queue
 import threading
+
+import anipose_scripts.anipose_main
 import tools
 from aniposelib.cameras import CameraGroup
 from anipose_scripts import constants
@@ -336,8 +338,8 @@ def draw_projected_points(frames_2d, scheme, bodyparts, points):
                                 points[cix],
                                 scheme,
                                 bodyparts,
-                                constants.colors,
-                                constants.sizes
+                                anipose_scripts.anipose_main.colors,
+                                anipose_scripts.anipose_main.sizes
                                 )
         img_out = cv2.cvtColor(frame_out, cv2.COLOR_RGB2BGR)
         out.append(img_out)
