@@ -118,7 +118,7 @@ dict_of_avis = {x: tools.get_files(input_folder, (x + '.' + VIDEO_EXT))
 if __name__ == '__main__':
     fname = r'C:\Users\Peter\Desktop\anipose\reach-unfilled\config.toml'
     fname = r'C:\Users\Peter\Desktop\anipose\checkerboard-unfilled\config.toml'
-    # cfg = load_config(fname)
+    # cfg = load_config(basename)
     # img = anipose.common.get_calibration_board_image(cfg)
     # cv2.imwrite('calibration.png', img)
 

@@ -105,7 +105,7 @@ def load_2d_data(config):
 
     for key, (session_path, fnames) in pose_fnames.items():
         for fname in fnames:
-            # print(fname)
+            # print(basename)
             vidname = get_video_name(config, fname)
             k = (key, session_path, vidname)
             cam_videos[k].append(fname)
@@ -180,7 +180,7 @@ def get_all_videos_fnames(config):
 
     for key, (session_path, fnames) in vids_fnames.items():
         for fname in fnames:
-            # print(fname)
+            # print(basename)
             vidname = get_video_name(config, fname)
             k = (key, session_path, vidname)
             cam_videos[k].append(fname)
