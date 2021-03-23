@@ -16,11 +16,10 @@ import anipose.triangulate
 
 from anipose_scripts.constants import VIDEO_EXT, DLC_LIKELIHOOD_THRES, \
     FILTER_CONFIG, FILTER3D_CONFIG, CAMERA_NAMES, CAM_REGEX, CALIBRATION_BOARD
-
 calib_dir = r'C:\Users\Peter\Desktop\anipose\calibration'
-data_dir = r'C:\Users\Peter\Desktop\anipose\TEST_DATA'
-mouse_dir = 'TEST_MOUSE'
-date_dir = 'TEST_DATE'
+data_dir = r'C:\Users\Peter\Desktop\DATA'
+mouse_dir = 'M4'
+date_dir = '2021_03_10'
 model_dirs = {
     'CAM0': r'C:\Users\Peter\Desktop\DLC\M2_M4_M5_M9_FRONT-pw-2021-03-08',
     'CAM1': r'C:\Users\Peter\Desktop\DLC\M2_M4_M5_M9_SIDE-pw-2021-03-09'
@@ -107,17 +106,18 @@ pose3d_filter_folder = os.path.join(input_folder,
                                     'ANALYZED',
                                     'POSE_3D_FILTER')
 pose3d_video_folder = os.path.join(input_folder,
-                                            'ANALYZED',
-                                            'VIDEOS_3D')
+                                   'ANALYZED',
+                                   'VIDEOS_3D')
 combined_video_folder = os.path.join(input_folder,
-                                            'ANALYZED',
-                                            'VIDEOS_3D_COMBINED')
+                                     'ANALYZED',
+                                     'VIDEOS_3D_COMBINED')
 dict_of_avis = {x: tools.get_files(input_folder, (x + '.' + VIDEO_EXT))
                 for x in CAMERA_NAMES}
 
 if __name__ == '__main__':
     fname = r'C:\Users\Peter\Desktop\anipose\reach-unfilled\config.toml'
-    fname = r'C:\Users\Peter\Desktop\anipose\checkerboard-unfilled\config.toml'
+    # fname = r'C:\Users\Peter\Desktop\anipose\checkerboard-unfilled\config.toml'
+
     # cfg = load_config(basename)
     # img = anipose.common.get_calibration_board_image(cfg)
     # cv2.imwrite('calibration.png', img)
@@ -128,34 +128,34 @@ if __name__ == '__main__':
     #                             fisheye=False,
     #                             video_ext=VIDEO_EXT)
     #
-    # for cam, video_pns in dict_of_avis.items():
-    #     model = model_dirs[cam]
-    #     anp.pose_videos.process_peter(videos=video_pns,
-    #                                   model_folder=model,
-    #                                   out_folder=pose2d_folder,
-    #                                   video_type=VIDEO_EXT)
-    # #
-    # anp.label_videos.process_peter(scheme=scheme,
-    #                                threshold=DLC_LIKELIHOOD_THRES,
-    #                                body_part_colors=colors,
-    #                                body_part_sizes=sizes,
-    #                                video_folder=input_folder,
-    #                                pose_2d_folder=pose2d_folder,
-    #                                out_folder= pose2d_video_folder
-    #                                )
+    for cam, video_pns in dict_of_avis.items():
+        model = model_dirs[cam]
+        anp.pose_videos.process_peter(videos=video_pns,
+                                      model_folder=model,
+                                      out_folder=pose2d_folder,
+                                      video_type=VIDEO_EXT)
     #
-    # anp.filter_pose.process_peter(FILTER_CONFIG,
-    #                               pose2d_folder,
-    #                               pose2d_filter_folder)
-
     anp.label_videos.process_peter(scheme=scheme,
                                    threshold=DLC_LIKELIHOOD_THRES,
                                    body_part_colors=colors,
                                    body_part_sizes=sizes,
                                    video_folder=input_folder,
-                                   pose_2d_folder=pose2d_filter_folder,
-                                   out_folder= pose2d_video_filtered_folder
+                                   pose_2d_folder=pose2d_folder,
+                                   out_folder= pose2d_video_folder
                                    )
+
+    # anp.filter_pose.process_peter(FILTER_CONFIG,
+    #                               pose2d_folder,
+    #                               pose2d_filter_folder)
+    #
+    # anp.label_videos.process_peter(scheme=scheme,
+    #                                threshold=DLC_LIKELIHOOD_THRES,
+    #                                body_part_colors=colors,
+    #                                body_part_sizes=sizes,
+    #                                video_folder=input_folder,
+    #                                pose_2d_folder=pose2d_filter_folder,
+    #                                out_folder= pose2d_video_filtered_folder
+    #                                )
 
     # anp.triangulate.process_peter(triangulation_config=triangulation_config,
     #                               calib_folder=calib_dir,

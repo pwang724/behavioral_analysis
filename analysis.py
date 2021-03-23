@@ -11,6 +11,7 @@ import anipose_scripts.constants as constants
 import tools
 import pprint
 import itertools
+import os
 
 plt.rcParams.update({'font.size': 15})
 
@@ -27,7 +28,7 @@ DIM_CAMERA = 0
 DIM_BP = 1
 DIM_FRAME = 2
 DIM_COORDS_SCORE = 3
-BPS_TRACK_LOCATION = ['r2_in', 'r2_out', 'r3_in', 'r3_out']
+BPS_TRACK_LOCATION = ['r2_in', 'r3_in']
 BPS_TRACK_PAW = ['r1_in', 'r1_out',
                  'r2_in', 'r2_out',
                  'r3_in', 'r3_out',
@@ -36,6 +37,8 @@ BPS_TRACK_PELLET = ['pellet']
 BPS_CARE = {'location': BPS_TRACK_LOCATION,
             'paw': BPS_TRACK_PAW,
             'pellet': BPS_TRACK_PELLET}
+LABEL_MAX_HOLE_LENGTH = 3
+LABEL_MIN_REGION_LENGTH = 4
 
 ANGLES_LOCATION = [
     ['r2_out', 'r2_in', 'r3_in'],
@@ -115,41 +118,114 @@ def get_good_chunks(data_interp,
     regions, region_ixs = find_region_bounds(bool_vec, min_gap=min_frames)
     return regions, region_ixs
 
-dict_of_data = {x: tools.get_files(main.pose2d_folder, (x + '.h5'))
-                for x in constants.CAMERA_NAMES}
-bps_to_include = np.unique([x for y in main.scheme for x in y])
+# inputs
+data_dir = r'C:\Users\Peter\Desktop\DATA\M4\2021_03_10'
+analyzed_dir = os.path.join(data_dir, 'ANALYZED')
+scheme = [['r1_in', 'r1_out'],
+          ['r2_in', 'r2_out'],
+          ['r3_in', 'r3_out'],
+          ['r4_in', 'r4_out'],
+          ['r1_in', 'r2_in', 'r3_in', 'r4_in'],
+          ['pellet'],
+          ['insured pellet']]
+
+# load markers
+marker_dir = os.path.join(analyzed_dir, 'POSE_2D')
+list_of_marker_files = [tools.get_files(marker_dir, (x + '.h5'))
+                        for x in constants.CAMERA_NAMES]
+list_of_marker_files = [x for x in zip(*list_of_marker_files)]
+bps_to_include = np.unique([x for y in scheme for x in y])
 bp_dict = {bp: i for i, bp in enumerate(bps_to_include)}
 
-### LOOP OVER THIS
-video_ix = 0
-cam = constants.CAMERA_NAMES[0]
+# marker preprocessing
+marker_xys_per_video = [] #[video][camera][data]
+marker_regions_per_video = [] #[video][camera]['location/paw/pellet'][regions]
+for marker_file_per_camera in list_of_marker_files:
+    marker_xys = []
+    marker_regions = []
+    for fn in marker_file_per_camera:
+        # DATA SHAPE [BODYPARTS, FRAMES, (X, Y, SCORE)]
+        data = load_to_np_array(fn, bps_to_include)
+        for bpix in range(data.shape[0]):
+            x, y, score = repair_holes(x=data[bpix, :, 0],
+                                       y=data[bpix, :, 1],
+                                       score=data[bpix, :, 2],
+                                       score_threshold=SCORE_THRESHOLD,
+                                       default_interp_score_val=SCORE_INTERP,
+                                       gap=NAN_GAP)
+            data[bpix, :, 0] = x
+            data[bpix, :, 1] = y
+            data[bpix, :, 2] = score
+        marker_xys.append(data)
 
-# DATA SHAPE [BODYPARTS, FRAMES, (X, Y, SCORE)]
-data = load_to_np_array(dict_of_data[cam][video_ix], bps_to_include)
+        bps_regions_dict = {}
+        for k, bps in BPS_CARE.items():
+            bps_ix = [bp_dict[bp] for bp in bps]
+            regions, region_ixs = get_good_chunks(data,
+                                                  bps_ix,
+                                                  score_threshold=SCORE_THRESHOLD,
+                                                  min_frames=CRITERIA_CONTIGUOUS_FRAMES)
+            bps_regions_dict[k] = regions
+        marker_regions.append(bps_regions_dict)
+    marker_xys_per_video.append(marker_xys)
+    marker_regions_per_video.append(marker_regions)
 
-# interpolate small missing regions per body part
-for bp_ix in range(data.shape[0]):
-    x, y, score = repair_holes(x=data[bp_ix, :, 0],
-                               y=data[bp_ix, :, 1],
-                               score=data[bp_ix, :, 2],
-                               score_threshold=SCORE_THRESHOLD,
-                               default_interp_score_val=SCORE_INTERP,
-                               gap=NAN_GAP)
-    data[bp_ix, :, 0] = x
-    data[bp_ix, :, 1] = y
-    data[bp_ix, :, 2] = score
+# load labels
+label_dir = os.path.join(analyzed_dir, 'LABELS')
+list_of_labels = tools.get_files(label_dir, ('labels.csv'))
+label_names = pd.read_csv(list_of_labels[0], index_col=0).columns.to_numpy()
 
-# chunk into good segments
-region_dict = {}
-for k, bps in BPS_CARE.items():
-    bps_ix = [bp_dict[bp] for bp in bps]
-    regions, region_ixs = get_good_chunks(data,
-                                          bps_ix,
-                                          score_threshold=SCORE_THRESHOLD,
-                                          min_frames=CRITERIA_CONTIGUOUS_FRAMES)
-    region_dict[k] = regions
-print(region_dict)
+# label preprocessing
+label_regions_per_video = []
+for fn in list_of_labels:
+    df = pd.read_csv(fn, index_col=0)
+    df = df.to_numpy().T
+    label_regions = {}
+    for label_vec, label_name in zip(df, label_names):
+        failed_threshold = label_vec < 1
+        _, repair_ixs = find_region_bounds(failed_threshold,
+                                           max_gap=LABEL_MAX_HOLE_LENGTH)
+        label_vec[repair_ixs] = 1
+        chunks, _ = find_region_bounds(label_vec > 0,
+                                       min_gap=LABEL_MIN_REGION_LENGTH)
+        label_regions[label_name] = chunks
+    label_regions_per_video.append(label_regions)
 
-#
+# get grab locations
+bps = BPS_CARE['location']
+bps_ix = [bp_dict[bp] for bp in bps]
+grab_xy_per_video = []
+grab_ixs_per_video = []
+for marker_xys, label_regions in zip(marker_xys_per_video,
+                                     label_regions_per_video):
+    _, loc_ixs = get_good_chunks(marker_xys[1],
+                                 bps_ix,
+                                 score_threshold=SCORE_THRESHOLD,
+                                 min_frames=CRITERIA_CONTIGUOUS_FRAMES)
+    xcam0 = np.mean(marker_xys[0][bps_ix, :, 0], axis=0)
+    xcam1 = np.mean(marker_xys[1][bps_ix, :, 0], axis=0)
+    grab_regions = label_regions['grab']
+    grab_xy = []
+    grab_ix = []
+    for r in grab_regions:
+        grab_ixs = np.arange(r[0], r[1])
+        ixs = np.intersect1d(grab_ixs, loc_ixs)
+        x0 = xcam0[ixs]
+        x1 = xcam1[ixs]
+        xy = [np.mean(x0[:3]), np.mean(x1[:3])]
+        grab_xy.append(xy)
+        grab_ix.append(list(ixs[:3]))
+    grab_xy_per_video.append(grab_xy)
+    grab_ixs_per_video.append(grab_ix)
+
+# pellet
+SCORE_THRESHOLD = 0.99
+bp_ixs = [bp_dict[bp] for bp in BPS_TRACK_PELLET]
+data = marker_xys_per_video[0][1]
+
+regions, region_ixs = get_good_chunks(data,
+                                      bps_ix,
+                                      score_threshold=SCORE_THRESHOLD,
+                                      min_frames=50)
 
 
