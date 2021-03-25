@@ -14,7 +14,6 @@ import threading
 import anipose_scripts.anipose_main
 import tools
 from aniposelib.cameras import CameraGroup
-from anipose_scripts import constants
 
 from .common import make_process_fun, get_nframes, \
     get_video_name, get_cam_name, \
@@ -550,7 +549,7 @@ def process_peter(scheme,
 
     fnames_2d = defaultdict(list)
     for vid in vid_fnames_2d:
-        vidname = tools.get_video_name(cam_regex, vid)
+        vidname = tools.videoname_from_regex(cam_regex, vid)
         fnames_2d[vidname].append(vid)
 
     fnames_3d = defaultdict(list)
@@ -585,7 +584,7 @@ def process_peter(scheme,
         fname_3d_current = fnames_3d[basename][0]
         fnames_2d_current = fnames_2d[basename]
         fnames_2d_current = sorted(fnames_2d_current, key=natural_keys)
-        cam_names = [tools.get_cam_name(cam_regex, fname) for fname in
+        cam_names = [tools.camname_from_regex(cam_regex, fname) for fname in
                      fnames_2d_current]
         offsets_dict = load_offsets_dict({}, cam_names, video_folder)
         cgroup_subset = cgroup.subset_cameras_names(cam_names)

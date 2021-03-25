@@ -1,0 +1,46 @@
+TODOs
+
+- DONE get pellet location on a per trial basis
+    - DONE: find frames in which the velocity becomes 0
+    - DONE: interpolate between weird trials
+    - DONE: plot pellet location, reach locations
+
+- DONE get result of every grab attempt
+
+- DONE screen trials
+    - DONE develop csv format file for inclusion / exclusion
+    - TODO: develop stacking code for video montage
+    - bad trials:
+        - extra pellet from prev trial
+        - successful trials at the very end of recording, like trial 26.
+        currently the best way to assess T/F is through chewing epochs, which overrides the drop
+         signal
+
+- DONE redo behavior
+    - DONE copy behavior project, add new label of pellet_to_mouth, which should
+    be the best predictor of success and failure.
+
+- DONE random
+    - DONE include labels on alienware comp onto this computer
+
+- TODO:
+    - ramp up and iterate through an entire mouse
+    - test new model
+    - refactor code
+    - plot reach dynamics
+
+truth table
+
+DROP  GRAB_TO_MOUTH CHEW    RESULT
+000 failed or disinterested, depending on grab
+011 good, T
+001 weird, check, T
+010 weird, check, end of trial
+100 failed
+
+110 weird
+101 weird
+111 weird
+
+depends on if dropped after or before. if after, failed after grab. if before,
+false negative

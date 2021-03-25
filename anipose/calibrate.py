@@ -19,7 +19,7 @@ def process_peter(calibration_path,
     cam_videos = defaultdict(list)
     cam_names = set()
     for vid in videos:
-        name = tools.get_cam_name(cam_regex, vid)
+        name = tools.camname_from_regex(cam_regex, vid)
         cam_videos[name].append(vid)
         cam_names.add(name)
     cam_names = sorted(cam_names)

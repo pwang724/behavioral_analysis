@@ -5,8 +5,6 @@ import numpy as np
 import pandas as pd
 import re
 
-d = r'C:\Users\Peter\Desktop\DLC\new_position-pw-2021-03-01\videos_pred_dlc'
-
 def mp4_to_avi(d, delete_old=True):
     mp4_files = sorted(glob.glob(d + '/*.mp4'))
 
@@ -45,10 +43,30 @@ def print_dict(ddict, length=True):
             print(f'{k}: {v}')
 
 
+def load_pose_to_np(fname, bps):
+    '''
+    Load DLC pose2d data into an np array with specified body parts.
+
+    :param fname: DLC hd5 file
+    :param bps: list of body part names
+    :return: numpy array of dims: [bps, frames, xys]
+    '''
+    df_orig = pd.read_hdf(fname)
+    scorer = df_orig.columns.levels[0][0]
+    df = df_orig.loc[:,scorer]
+
+    n_frames = df.shape[0]
+    n_joints = len(bps)
+    assert len(df.index) == n_frames
+    data = np.array(df[bps]).reshape(n_frames, n_joints, 3)
+    data = np.transpose(data, (1, 0, 2))
+    return data
+
+
 def load_pose_2d(fname):
-    data_orig = pd.read_hdf(fname)
-    scorer = data_orig.columns.levels[0][0]
-    data = data_orig.loc[:, scorer]
+    df_orig = pd.read_hdf(fname)
+    scorer = df_orig.columns.levels[0][0]
+    data = df_orig.loc[:, scorer]
 
     bp_index = data.columns.names.index('bodyparts')
     coord_index = data.columns.names.index('coords')
@@ -57,14 +75,14 @@ def load_pose_2d(fname):
 
     n_frames = len(data)
     n_joints = len(bodyparts)
-    test = np.array(data).reshape(n_frames, n_joints, n_possible, 3)
+    out = np.array(data).reshape(n_frames, n_joints, n_possible, 3)
 
     metadata = {
         'bodyparts': bodyparts,
         'scorer': scorer,
         'index': data.index
     }
-    return test, metadata
+    return out, metadata
 
 
 def write_pose_2d(all_points, metadata, outname=None):
@@ -96,7 +114,8 @@ def true_basename(fname):
     basename = os.path.splitext(basename)[0]
     return basename
 
-def get_cam_name(cam_regex, fname):
+
+def camname_from_regex(cam_regex, fname):
     basename = true_basename(fname)
     match = re.search(cam_regex, basename)
     if not match:
@@ -105,7 +124,10 @@ def get_cam_name(cam_regex, fname):
         name = match.groups()[0]
         return name.strip()
 
-def get_video_name(cam_regex, fname):
+
+def videoname_from_regex(cam_regex, fname):
     basename = true_basename(fname)
     vidname = re.sub(cam_regex, '', basename)
     return vidname.strip()
+
+

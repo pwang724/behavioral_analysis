@@ -10,7 +10,6 @@ from matplotlib import animation
 import anipose_scripts.anipose_main
 import tools
 from .common import get_video_params, natural_keys
-from anipose_scripts import constants
 
 
 def connect(points, bps, bp_dict, color, plot_args):
@@ -176,7 +175,7 @@ def process_peter(scheme,
     vid_fnames = glob(os.path.join(video_folder, "*."+video_ext))
     orig_fnames = defaultdict(list)
     for vid in vid_fnames:
-        vidname = tools.get_video_name(cam_regex, vid)
+        vidname = tools.videoname_from_regex(cam_regex, vid)
         orig_fnames[vidname].append(vid)
 
     labels_fnames = glob(os.path.join(pose_3d_folder, '*.csv'))

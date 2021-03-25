@@ -1,28 +1,45 @@
 import matplotlib.colors
 
 import anipose as anp
+import anipose.anipose
+import anipose.common
 import anipose.label_videos_3d
 import anipose.label_combined
 import os
 import numpy as np
 import tools
-import anipose_scripts.constants as constants
 import anipose.pose_videos
 import anipose.label_videos
 import anipose.filter_pose
 import anipose.filter_3d
 import anipose.calibrate
 import anipose.triangulate
+import base
+from base import SCORE_THRESHOLD
 
-from anipose_scripts.constants import VIDEO_EXT, DLC_LIKELIHOOD_THRES, \
-    FILTER_CONFIG, FILTER3D_CONFIG, CAMERA_NAMES, CAM_REGEX, CALIBRATION_BOARD
 calib_dir = r'C:\Users\Peter\Desktop\anipose\calibration'
 data_dir = r'C:\Users\Peter\Desktop\DATA'
-mouse_dir = 'M4'
-date_dir = '2021_03_10'
+mouse_dir = 'M9'
+date_dir = '2021.03.07'
 model_dirs = {
     'CAM0': r'C:\Users\Peter\Desktop\DLC\M2_M4_M5_M9_FRONT-pw-2021-03-08',
     'CAM1': r'C:\Users\Peter\Desktop\DLC\M2_M4_M5_M9_SIDE-pw-2021-03-09'
+}
+
+FILTER_CONFIG = {
+    'enabled': False,
+    'type': 'medfilt',
+    'medfilt': 13,
+    'offset_threshold': 25,
+    'score_threshold': SCORE_THRESHOLD,
+    'spline': True,
+    'n_back': 5,
+    'multiprocessing': False
+}
+FILTER3D_CONFIG = {
+    'error_threshold': 50,
+    'score_threshold': 0.95,
+    'medfilt': 13
 }
 
 triangulation_config = {
@@ -111,32 +128,30 @@ pose3d_video_folder = os.path.join(input_folder,
 combined_video_folder = os.path.join(input_folder,
                                      'ANALYZED',
                                      'VIDEOS_3D_COMBINED')
-dict_of_avis = {x: tools.get_files(input_folder, (x + '.' + VIDEO_EXT))
-                for x in CAMERA_NAMES}
+dict_of_avis = {x: tools.get_files(input_folder, (x + '.' + base.RAW_VIDEO_EXT))
+                for x in base.CAMERA_NAMES}
+
 
 if __name__ == '__main__':
-    fname = r'C:\Users\Peter\Desktop\anipose\reach-unfilled\config.toml'
-    # fname = r'C:\Users\Peter\Desktop\anipose\checkerboard-unfilled\config.toml'
-
-    # cfg = load_config(basename)
-    # img = anipose.common.get_calibration_board_image(cfg)
-    # cv2.imwrite('calibration.png', img)
-
+    # basename = r'C:\Users\Peter\Desktop\anipose\checkerboard-unfilled'
+    # fname = os.path.join(basename, r'config.toml')
+    # cfg = anp.anipose.load_config(basename)
     # anp.calibrate.process_peter(calibration_path=calib_dir,
-    #                             board=CALIBRATION_BOARD,
-    #                             cam_regex=CAM_REGEX,
+    #                             board=base.CALIBRATION_BOARD,
+    #                             cam_regex=base.CAM_REGEX,
     #                             fisheye=False,
-    #                             video_ext=VIDEO_EXT)
-    #
+    #                             video_ext=base.RAW_VIDEO_EXT)
+
+
     for cam, video_pns in dict_of_avis.items():
         model = model_dirs[cam]
         anp.pose_videos.process_peter(videos=video_pns,
                                       model_folder=model,
                                       out_folder=pose2d_folder,
-                                      video_type=VIDEO_EXT)
+                                      video_type=base.RAW_VIDEO_EXT)
     #
     anp.label_videos.process_peter(scheme=scheme,
-                                   threshold=DLC_LIKELIHOOD_THRES,
+                                   threshold=base.SCORE_THRESHOLD,
                                    body_part_colors=colors,
                                    body_part_sizes=sizes,
                                    video_folder=input_folder,
@@ -144,41 +159,41 @@ if __name__ == '__main__':
                                    out_folder= pose2d_video_folder
                                    )
 
-    # anp.filter_pose.process_peter(FILTER_CONFIG,
-    #                               pose2d_folder,
-    #                               pose2d_filter_folder)
-    #
-    # anp.label_videos.process_peter(scheme=scheme,
-    #                                threshold=DLC_LIKELIHOOD_THRES,
-    #                                body_part_colors=colors,
-    #                                body_part_sizes=sizes,
-    #                                video_folder=input_folder,
-    #                                pose_2d_folder=pose2d_filter_folder,
-    #                                out_folder= pose2d_video_filtered_folder
-    #                                )
+    anp.filter_pose.process_peter(FILTER_CONFIG,
+                                  pose2d_folder,
+                                  pose2d_filter_folder)
 
-    # anp.triangulate.process_peter(triangulation_config=triangulation_config,
-    #                               calib_folder=calib_dir,
-    #                               pose_folder=pose2d_folder,
-    #                               video_folder=input_folder,
-    #                               output_folder=pose3d_folder,
-    #                               cam_regex=CAM_REGEX)
-    # anp.filter_3d.process_peter(FILTER3D_CONFIG,
-    #                             pose3d_folder,
-    #                             pose3d_filter_folder)
-    # anp.label_videos_3d.process_peter(scheme=scheme,
-    #                                   optim=triangulation_config['optim'],
-    #                                   video_folder=input_folder,
-    #                                   pose_3d_folder=pose3d_folder,
-    #                                   out_folder=pose3d_video_folder,
-    #                                   video_ext=VIDEO_EXT,
-    #                                   cam_regex=CAM_REGEX)
-    # anp.label_combined.process_peter(scheme=scheme,
-    #                                  optim=triangulation_config['optim'],
-    #                                  calib_folder=calib_dir,
-    #                                  video_folder=input_folder,
-    #                                  pose_3d_folder=pose3d_folder,
-    #                                  video_3d_folder=pose3d_video_folder,
-    #                                  out_folder=combined_video_folder,
-    #                                  cam_regex=CAM_REGEX,
-    #                                  video_ext=VIDEO_EXT)
+    anp.label_videos.process_peter(scheme=scheme,
+                                   threshold=base.SCORE_THRESHOLD,
+                                   body_part_colors=colors,
+                                   body_part_sizes=sizes,
+                                   video_folder=input_folder,
+                                   pose_2d_folder=pose2d_filter_folder,
+                                   out_folder= pose2d_video_filtered_folder
+                                   )
+
+    anp.triangulate.process_peter(triangulation_config=triangulation_config,
+                                  calib_folder=calib_dir,
+                                  pose_folder=pose2d_folder,
+                                  video_folder=input_folder,
+                                  output_folder=pose3d_folder,
+                                  cam_regex=base.CAM_REGEX)
+    anp.filter_3d.process_peter(FILTER3D_CONFIG,
+                                pose3d_folder,
+                                pose3d_filter_folder)
+    anp.label_videos_3d.process_peter(scheme=scheme,
+                                      optim=triangulation_config['optim'],
+                                      video_folder=input_folder,
+                                      pose_3d_folder=pose3d_folder,
+                                      out_folder=pose3d_video_folder,
+                                      video_ext=base.RAW_VIDEO_EXT,
+                                      cam_regex=base.CAM_REGEX)
+    anp.label_combined.process_peter(scheme=scheme,
+                                     optim=triangulation_config['optim'],
+                                     calib_folder=calib_dir,
+                                     video_folder=input_folder,
+                                     pose_3d_folder=pose3d_folder,
+                                     video_3d_folder=pose3d_video_folder,
+                                     out_folder=combined_video_folder,
+                                     cam_regex=base.CAM_REGEX,
+                                     video_ext=base.RAW_VIDEO_EXT)

@@ -318,14 +318,14 @@ def process_peter(triangulation_config,
 
     cam_videos = defaultdict(list)
     for pf in pose_files:
-        name = tools.get_video_name(cam_regex, pf)
+        name = tools.videoname_from_regex(cam_regex, pf)
         cam_videos[name].append(pf)
     vid_names = cam_videos.keys()
     vid_names = sorted(vid_names, key=natural_keys)
 
     for name in vid_names:
         fnames = cam_videos[name]
-        cam_names = [tools.get_cam_name(cam_regex, f) for f in fnames]
+        cam_names = [tools.camname_from_regex(cam_regex, f) for f in fnames]
         fname_dict = dict(zip(cam_names, fnames))
         output_fname = os.path.join(output_folder, name + '.csv')
 
