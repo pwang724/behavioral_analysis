@@ -1,5 +1,5 @@
-import deeplabcut as dlc
-# import deeplabcutcore as dlccore
+# import deeplabcut as dlc
+import deeplabcutcore as dlccore
 import os
 import tools
 
@@ -7,7 +7,7 @@ if __name__ == '__main__':
     orientation = 'FRONT'
     parent_directory = r'C:\Users\Peter\Desktop\DLC'
     project_path = os.path.join(parent_directory,
-                                f'calibration-pw-2021-03-13')
+                                f'M2_M4_M5_M9_FRONT-pw-2021-03-08')
     config_path = os.path.join(project_path, 'config.yaml')
     video_path = os.path.join(project_path, 'videos')
 
@@ -56,30 +56,35 @@ if __name__ == '__main__':
 
     # Train network
     # dlccore.create_training_dataset(config_path, augmenter_type='imgaug')
-    # dlccore.train_network(config_path, displayiters=1000, saveiters=10000, )
+    dlccore.train_network(config_path,
+                          displayiters=1000,
+                          saveiters=10000,
+                          )
 
     # Plot
-    dlc.analyze_videos(config_path,
-                       videos=[video_path],
-                       videotype='avi',
-                       )
+    # dlc.analyze_videos(config_path,
+    #                    videos=[video_path],
+    #                    videotype='avi',
+    #                    )
     # dlc.filterpredictions(config_path, [video_path], videotype='avi')
-    dlc.create_labeled_video(config_path,
-                             [video_path],
-                             videotype='avi',
-                             filtered=False)
-    tools.mp4_to_avi(video_path)
+    # dlc.create_labeled_video(config_path,
+    #                          [video_path],
+    #                          videotype='avi',
+    #                          filtered=False)
 
     ## Refine
     # new_videos = [
-    #     r'M9_2021.03.08_00108_FRONT.avi',
-    #     r'M9_2021.03.08_00109_FRONT.avi',
+        # r'M9_2021.03.11_00010_CAM0.avi',
+        # r'M9_2021.03.11_00045_CAM0.avi',
+    #     r'M9_2021.03.11_00033_CAM0.avi',
     # ]
-    # new_videos = [os.path.join(video_path, x) for x in new_videos]
+    # new_video_path = r'C:\Users\Peter\Desktop\DATA\M9\2021.03.11'
+    # new_videos = [os.path.join(new_video_path, x) for x in new_videos]
     # dlc.add_new_videos(config_path,
     #                    new_videos,
     #                    copy_videos=True
     #                    )
+
     # dlc.extract_outlier_frames(config_path,
     #                            new_videos,
     #                            outlieralgorithm='manual')

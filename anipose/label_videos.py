@@ -71,10 +71,10 @@ def visualize_labels(scheme,
                                          '-framerate': str(fps),
                                      },
                                      outputdict={
-                                         '-vcodec': 'mjpeg',
-                                         '-qp': '28',
+                                         '-vcodec': 'h264',
+                                         '-qp': '25',
                                          '-qscale': '0',
-                                         '-pix_fmt': 'yuvj420p',
+                                         '-pix_fmt': 'yuv420p',
                                      })
 
     points = [(dlabs[bp]['x'], dlabs[bp]['y']) for bp in bodyparts]
@@ -115,14 +115,16 @@ def process_peter(scheme,
         base_name = os.path.basename(label_pn)
         base_name = os.path.splitext(base_name)[0]
         video_name = os.path.join(video_folder, base_name + '.' + video_type)
-        out_fname = os.path.join(out_folder, base_name + '.avi')
+        out_fname = os.path.join(out_folder, base_name + '.mp4')
         if not os.path.exists(video_name):
             raise ValueError(f'{video_name} does not exist, but {label_pn} exists')
-        visualize_labels(scheme=scheme,
-                         threshold=threshold,
-                         color_dict=body_part_colors,
-                         size_dict=body_part_sizes,
-                         labels_fname=label_pn,
-                         vid_fname=video_name,
-                         out_fname=out_fname)
+
+        if not os.path.exists(out_fname):
+            visualize_labels(scheme=scheme,
+                             threshold=threshold,
+                             color_dict=body_part_colors,
+                             size_dict=body_part_sizes,
+                             labels_fname=label_pn,
+                             vid_fname=video_name,
+                             out_fname=out_fname)
 

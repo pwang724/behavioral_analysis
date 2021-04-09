@@ -61,6 +61,6 @@ INTERP_SMOOTH_MOTION_COEFFICIENT = 30
 # Maximum frame length for joining separated regions
 LABEL_JOIN_FRAME_GAP = 3
 # Minimum length for a contiguous chunk of labels
-LABEL_CRITERIA_CONTIGUOUS_FRAMES = 4
+LABEL_CRITERIA_CONTIGUOUS_FRAMES = 3
 
 ## Anipose configs

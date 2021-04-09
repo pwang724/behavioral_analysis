@@ -11,7 +11,7 @@ from scipy import signal
 import queue
 import threading
 
-import anipose_scripts.anipose_main
+import anp.anp_main as anipose_scripts
 import tools
 from aniposelib.cameras import CameraGroup
 

@@ -26,8 +26,6 @@ def process_peter(videos,
     trap = io.StringIO()
     for i in range(0, len(videos), 5):
         batch = videos[i:i + 5]
-        for video in batch:
-            print(video)
         with redirect_stdout(trap):
             os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
             deeplabcut.analyze_videos(config_name,

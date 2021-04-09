@@ -1,30 +1,7 @@
 import os
-import glob
-import imageio
 import numpy as np
 import pandas as pd
 import re
-
-def mp4_to_avi(d, delete_old=True):
-    mp4_files = sorted(glob.glob(d + '/*.mp4'))
-
-    for mp4 in mp4_files:
-        reader = imageio.get_reader(mp4)
-        fps = reader.get_meta_data()['fps']
-        writer = imageio.get_writer(os.path.splitext(mp4)[0] + '.avi',
-                                    fps=fps,
-                                    codec='mjpeg',
-                                    pixelformat='yuvj420p',
-                                   quality=10)
-
-        for im in reader:
-            writer.append_data(im[:, :, :])
-        writer.close()
-
-    if delete_old:
-        for mp4 in mp4_files:
-            os.remove(mp4)
-
 
 def get_files(source, wcs):
     matches = []
@@ -41,6 +18,49 @@ def print_dict(ddict, length=True):
             print(f'{k}: {len(v)}')
         else:
             print(f'{k}: {v}')
+
+
+def smooth(x,window_len=11,window='hanning'):
+    """smooth the data using a window with requested size.
+
+    This method is based on the convolution of a scaled window with the signal.
+    The signal is prepared by introducing reflected copies of the signal
+    (with the window size) in both ends so that transient parts are minimized
+    in the begining and end part of the output signal.
+
+    input:
+        x: the input signal
+        window_len: the dimension of the smoothing window; should be an odd integer
+        window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
+            flat window will produce a moving average smoothing.
+
+    output:
+        the smoothed signal
+
+    example:
+
+    NOTE: length(output) != length(input), to correct this: return y[(window_len/2-1):-(window_len/2)] instead of just y.
+    """
+
+    if x.ndim != 1:
+        raise(ValueError, "smooth only accepts 1 dimension arrays.")
+    if x.size < window_len:
+        raise(ValueError, "Input vector needs to be bigger than window size.")
+    if window_len<3:
+        return x
+    if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
+        raise(ValueError, "Window is on of 'flat', 'hanning', 'hamming', "
+                          "'bartlett', 'blackman'")
+
+    s=np.r_[x[window_len-1:0:-1],x,x[-2:-window_len-1:-1]]
+    if window == 'flat': #moving average
+        w=np.ones(window_len,'d')
+    else:
+        w=eval('np.'+window+'(window_len)')
+    y=np.convolve(w/w.sum(),s,mode='valid')
+    y = y[(window_len//2):-(window_len//2)]
+    assert len(x) == len(y)
+    return y
 
 
 def load_pose_to_np(fname, bps):
@@ -131,3 +151,6 @@ def videoname_from_regex(cam_regex, fname):
     return vidname.strip()
 
 
+def desktop_path():
+    desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
+    return desktop

@@ -6,7 +6,8 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import base
 import tools
-
+from scipy.signal import savgol_filter
+import scipy.interpolate as interp
 
 def _get_markers(marker_dir, bodyparts, cams):
     '''
@@ -125,7 +126,7 @@ def _chunk_bodyparts(scores,
 
 def get_pellet_location(loc_arr, score_arr, plot):
     '''
-    1. Assumes that xs and xss are of shape [TRIALS, FRAMES]
+    1. Assumes that xs and xss are of shape [TRIALS][FRAMES]
     2. Assumes that the wheel rotation speed did not change within a session
 
     :param loc_arr:
@@ -133,25 +134,27 @@ def get_pellet_location(loc_arr, score_arr, plot):
     :return:
     '''
     import scipy.ndimage
-    num_start_frames = 100
-    burn_in_frames = 5
-    stationary_win = 5
+    num_start_frames = 150
+    burn_in_frames = 15
+    stationary_win = 10
     score_threshold = base.SCORE_THRESHOLD
 
     # find the best first stationary index
-    loc_arr = loc_arr[:, :num_start_frames]
-    score_arr = score_arr[:, :num_start_frames]
+    loc_arr = np.array([x[:num_start_frames] for x in loc_arr])
+    score_arr = np.array([x[:num_start_frames] for x in score_arr])
     xmas = np.ma.masked_where(score_arr < score_threshold, loc_arr)
     dxs = np.diff(xmas, axis=1)
     mdxs = np.mean(dxs, axis=0)
-    ix = np.argwhere(mdxs[burn_in_frames:] > 0)[0][0] + burn_in_frames
+    mdxs = savgol_filter(mdxs, window_length=7, polyorder=0)
+    residual = np.abs(mdxs[burn_in_frames:] - 0)
+    ix = np.argwhere(residual < 0.1)[0][0] + burn_in_frames
 
     # find all coordinates in which the pellet at the stationary index is
     # visible and has small velocity
     mask = np.logical_and(score_arr[:, ix:ix + stationary_win] > score_threshold,
-                          np.abs(dxs[:, ix:ix + stationary_win]) < 0.2)
+                          np.abs(dxs[:, ix:ix + stationary_win]) < 0.4)
     coords = np.ma.masked_where(np.invert(mask), loc_arr[:, ix:ix + stationary_win])
-    mcoords = np.mean(coords, axis=1)
+    mcoords = np.min(coords, axis=1)
 
     # interpolate and filter these coordinates across trials
     mcoords_interp = np.copy(mcoords)
@@ -165,14 +168,68 @@ def get_pellet_location(loc_arr, score_arr, plot):
     if plot:
         plt.figure()
         plt.plot(mdxs)
-        plt.title('Velocity')
+        plt.title('Velocity, ix at {}'.format(ix))
         plt.figure()
         plt.plot(mcoords)
         plt.title('Unrefined coordinates')
         plt.figure()
         plt.plot(mcoords_interp)
         plt.title('Interpolated + Median filtered coordinates')
+        plt.show()
     return mcoords_interp
+
+
+def anneal_labels(extends, grabs, window):
+    '''
+    Anneals labels together within a window gap. Assumes that a comes before b.
+
+    :param a: list of tuples denoting start and end of behavioral epoch
+    :param b: list of tuples denoting start and end of behavioral epoch
+    :return:
+    '''
+    before = []
+    after = []
+    both = []
+    for extend in extends:
+        for grab in grabs:
+            if np.abs(grab[0] - extend[1]) < window:
+                before.append(grab)
+                after.append(extend)
+                both.append([extend[0], grab[1]])
+    return before, after, both
+
+
+def interpolate_polyline(polyline, num_points, s=10):
+    duplicates = []
+    for i in range(1, len(polyline)):
+        if np.allclose(polyline[i], polyline[i-1], 1e-8, 1e-8):
+            duplicates.append(i)
+    if duplicates:
+        polyline = np.delete(polyline, duplicates, axis=0)
+    tck, u = interp.splprep(polyline.T, s=s)
+    u = np.linspace(0.0, 1.0, num_points)
+    return interp.splev(u, tck)
+
+
+def contiguous_interp(ixs, data):
+    if len(ixs) != ixs[-1] - ixs[0] + 1:
+        all_indices = np.arange(ixs[0], ixs[-1]+1)
+        interp_ixs = np.setdiff1d(all_indices, ixs)
+        interp_val = np.interp(interp_ixs, ixs, data[ixs])
+        data[interp_ixs] = interp_val
+    return data
+
+
+def _marker_label_intersects(marker_scores,
+                             grab_region,
+                             score_threshold,
+                             min_contiguous_frames):
+    _, loc_ixs = _chunk_bodyparts(marker_scores,
+                                  score_threshold=score_threshold,
+                                  min_frames=min_contiguous_frames)
+    grab_ixs = np.arange(grab_region[0], grab_region[1])
+    ixs = np.intersect1d(grab_ixs, loc_ixs)
+    return ixs
 
 
 def _get_grab_locations_atomic(marker_positions,
@@ -192,13 +249,11 @@ def _get_grab_locations_atomic(marker_positions,
     '''
     score_threshold = base.SCORE_THRESHOLD
     min_contiguous_frames = base.CRITERIA_CONTIGUOUS_FRAMES
-    window = 3
-
-    _, loc_ixs = _chunk_bodyparts(marker_scores,
-                                  score_threshold=score_threshold,
-                                  min_frames=min_contiguous_frames)
-    grab_ixs = np.arange(grab_region[0], grab_region[1])
-    ixs = np.intersect1d(grab_ixs, loc_ixs)
+    window = 5
+    ixs = _marker_label_intersects(marker_scores,
+                                   grab_region,
+                                   score_threshold,
+                                   min_contiguous_frames)
     mean_marker_position = np.mean(marker_positions, axis=0)
     pos = np.mean(mean_marker_position[ixs][:window])
     return pos
@@ -250,7 +305,8 @@ def outcome_truth_table(dropped_regions, chew_regions, grabbed_regions):
 
 
 def grab_truth_table(outcome, grabbed_regions, chew_regions, dropped_regions):
-    assert len(dropped_regions) <= 1, i
+    if len(dropped_regions) > 1:
+        print('more than 1 dropped region')
 
     done = False
     pregrab = base.GRABTYPES.FAIL_WITH_PELLET
@@ -280,16 +336,16 @@ def grab_truth_table(outcome, grabbed_regions, chew_regions, dropped_regions):
         n_grabs = len(grabbed_regions)
         for g in range(n_grabs):
             current_grab = grabbed_regions[g]
-            if current_grab[1] <= key_region[0]:
+            if current_grab[0] <= key_region[0]:
                 if g + 1 < n_grabs:
                     next_grab = grabbed_regions[g+1]
                 else:
                     next_grab = None
 
-                if next_grab is None or next_grab[0] >= key_region[1]:
+                if next_grab is None or next_grab[0] >= key_region[0]:
                     grab_outcomes.append(during)
-                    assert current_grab[1] - key_region[0] < 100
-                elif next_grab[0] < key_region[1]:
+                    assert current_grab[0] - key_region[0] < 100
+                elif next_grab[0] < key_region[0]:
                     grab_outcomes.append(base.GRABTYPES.FAIL_WITH_PELLET)
                 else:
                     raise ValueError('possibility not considered')

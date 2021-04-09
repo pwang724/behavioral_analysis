@@ -7,7 +7,7 @@ from matplotlib.pyplot import get_cmap
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
-import anipose_scripts.anipose_main
+import anp.anp_main as anp_main
 import tools
 from .common import get_video_params, natural_keys
 
@@ -128,8 +128,8 @@ def visualize_labels(scheme,
     pts = ax.scatter(xs=points[:, 0],
                      ys=points[:, 1],
                      zs=points[:, 2],
-                     c=[anipose_scripts.anipose_main.colors[bp][:3] / 255. for bp in bodyparts],
-                     s=[anipose_scripts.anipose_main.sizes[bp] ** 2 for bp in bodyparts],
+                     c=[anp_main.anipose_main.colors[bp][:3] / 255. for bp in bodyparts],
+                     s=[anp_main.anipose_main.sizes[bp] ** 2 for bp in bodyparts],
                      )
 
     text = fig.text(0, 1, "TEXT", va='top')

@@ -15,16 +15,8 @@ import anipose.filter_3d
 import anipose.calibrate
 import anipose.triangulate
 import base
+import video_tools
 from base import SCORE_THRESHOLD
-
-calib_dir = r'C:\Users\Peter\Desktop\anipose\calibration'
-data_dir = r'C:\Users\Peter\Desktop\DATA'
-mouse_dir = 'M9'
-date_dir = '2021.03.07'
-model_dirs = {
-    'CAM0': r'C:\Users\Peter\Desktop\DLC\M2_M4_M5_M9_FRONT-pw-2021-03-08',
-    'CAM1': r'C:\Users\Peter\Desktop\DLC\M2_M4_M5_M9_SIDE-pw-2021-03-09'
-}
 
 FILTER_CONFIG = {
     'enabled': False,
@@ -103,34 +95,6 @@ sizes = {
 
 body_parts = np.unique([x for y in scheme for x in y])
 
-input_folder = os.path.join(data_dir, mouse_dir, date_dir)
-pose2d_folder = os.path.join(input_folder,
-                             'ANALYZED',
-                             'POSE_2D')
-pose2d_filter_folder = os.path.join(input_folder,
-                                    'ANALYZED',
-                                    'POSE_2D_FILTERED')
-pose2d_video_folder = os.path.join(input_folder,
-                                   'ANALYZED',
-                                   'VIDEOS_2D')
-pose2d_video_filtered_folder = os.path.join(input_folder,
-                                            'ANALYZED',
-                                            'VIDEOS_2D_FILTERED')
-pose3d_folder = os.path.join(input_folder,
-                             'ANALYZED',
-                             'POSE_3D')
-pose3d_filter_folder = os.path.join(input_folder,
-                                    'ANALYZED',
-                                    'POSE_3D_FILTER')
-pose3d_video_folder = os.path.join(input_folder,
-                                   'ANALYZED',
-                                   'VIDEOS_3D')
-combined_video_folder = os.path.join(input_folder,
-                                     'ANALYZED',
-                                     'VIDEOS_3D_COMBINED')
-dict_of_avis = {x: tools.get_files(input_folder, (x + '.' + base.RAW_VIDEO_EXT))
-                for x in base.CAMERA_NAMES}
-
 
 if __name__ == '__main__':
     # basename = r'C:\Users\Peter\Desktop\anipose\checkerboard-unfilled'
@@ -142,58 +106,119 @@ if __name__ == '__main__':
     #                             fisheye=False,
     #                             video_ext=base.RAW_VIDEO_EXT)
 
+    def analyze(input_folder, model_dirs, test):
+        path, date = os.path.split(input_folder)
+        path, mouse = os.path.split(path)
+        desktop = tools.desktop_path()
+        analyzed_folder = os.path.join(desktop, 'ANALYZED', mouse, date)
 
-    for cam, video_pns in dict_of_avis.items():
-        model = model_dirs[cam]
-        anp.pose_videos.process_peter(videos=video_pns,
-                                      model_folder=model,
-                                      out_folder=pose2d_folder,
-                                      video_type=base.RAW_VIDEO_EXT)
-    #
-    anp.label_videos.process_peter(scheme=scheme,
-                                   threshold=base.SCORE_THRESHOLD,
-                                   body_part_colors=colors,
-                                   body_part_sizes=sizes,
-                                   video_folder=input_folder,
-                                   pose_2d_folder=pose2d_folder,
-                                   out_folder= pose2d_video_folder
-                                   )
+        pose2d_folder = os.path.join(analyzed_folder, 'POSE_2D')
+        pose2d_filter_folder = os.path.join(analyzed_folder, 'POSE_2D_FILTERED')
+        pose2d_video_folder = os.path.join(analyzed_folder, 'VIDEOS_2D')
+        dlc_collage_folder = os.path.join(analyzed_folder, 'COLLAGE_DLC')
+        pose2d_video_filtered_folder = os.path.join(analyzed_folder,
+                                                    'VIDEOS_2D_FILTERED')
+        pose3d_folder = os.path.join(analyzed_folder, 'POSE_3D')
+        pose3d_filter_folder = os.path.join(analyzed_folder, 'POSE_3D_FILTER')
+        pose3d_video_folder = os.path.join(analyzed_folder, 'VIDEOS_3D')
+        combined_video_folder = os.path.join(analyzed_folder,
+                                             'VIDEOS_3D_COMBINED')
+        dict_of_avis = {x: tools.get_files(input_folder, (x + '.' + base.RAW_VIDEO_EXT))
+                        for x in base.CAMERA_NAMES}
+        #TEMPORARY
+        import shutil
+        if os.path.exists(pose2d_video_folder):
+            shutil.rmtree(pose2d_video_folder)
+        if os.path.exists(pose2d_folder):
+            shutil.rmtree(pose2d_folder)
+        if os.path.exists(dlc_collage_folder):
+            shutil.rmtree(dlc_collage_folder)
 
-    anp.filter_pose.process_peter(FILTER_CONFIG,
-                                  pose2d_folder,
-                                  pose2d_filter_folder)
+        if test:
+            for k, v in dict_of_avis.items():
+                dict_of_avis[k] = v[:1]
 
-    anp.label_videos.process_peter(scheme=scheme,
-                                   threshold=base.SCORE_THRESHOLD,
-                                   body_part_colors=colors,
-                                   body_part_sizes=sizes,
-                                   video_folder=input_folder,
-                                   pose_2d_folder=pose2d_filter_folder,
-                                   out_folder= pose2d_video_filtered_folder
-                                   )
+        for cam, video_pns in dict_of_avis.items():
+            model = model_dirs[cam]
+            anp.pose_videos.process_peter(videos=video_pns,
+                                          model_folder=model,
+                                          out_folder=pose2d_folder,
+                                          video_type=base.RAW_VIDEO_EXT)
 
-    anp.triangulate.process_peter(triangulation_config=triangulation_config,
-                                  calib_folder=calib_dir,
-                                  pose_folder=pose2d_folder,
-                                  video_folder=input_folder,
-                                  output_folder=pose3d_folder,
-                                  cam_regex=base.CAM_REGEX)
-    anp.filter_3d.process_peter(FILTER3D_CONFIG,
-                                pose3d_folder,
-                                pose3d_filter_folder)
-    anp.label_videos_3d.process_peter(scheme=scheme,
-                                      optim=triangulation_config['optim'],
-                                      video_folder=input_folder,
-                                      pose_3d_folder=pose3d_folder,
-                                      out_folder=pose3d_video_folder,
-                                      video_ext=base.RAW_VIDEO_EXT,
-                                      cam_regex=base.CAM_REGEX)
-    anp.label_combined.process_peter(scheme=scheme,
-                                     optim=triangulation_config['optim'],
-                                     calib_folder=calib_dir,
-                                     video_folder=input_folder,
-                                     pose_3d_folder=pose3d_folder,
-                                     video_3d_folder=pose3d_video_folder,
-                                     out_folder=combined_video_folder,
-                                     cam_regex=base.CAM_REGEX,
-                                     video_ext=base.RAW_VIDEO_EXT)
+        anp.label_videos.process_peter(scheme=scheme,
+                                       threshold=base.SCORE_THRESHOLD,
+                                       body_part_colors=colors,
+                                       body_part_sizes=sizes,
+                                       video_folder=input_folder,
+                                       pose_2d_folder=pose2d_folder,
+                                       out_folder= pose2d_video_folder,
+                                       video_type='avi'
+                                       )
+
+        videos0 = [os.path.join(pose2d_video_folder, x) for x in os.listdir(
+            pose2d_video_folder)
+                   if 'CAM0' in x]
+        videos0 = sorted(videos0)
+        video_tools.make_collage(videos0,
+                                 width=5,
+                                 height=4,
+                                 collage_folder=dlc_collage_folder,
+                                 savestr='CAM0')
+
+        # anp.filter_pose.process_peter(FILTER_CONFIG,
+        #                               pose2d_folder,
+        #                               pose2d_filter_folder)
+        #
+        # anp.label_videos.process_peter(scheme=scheme,
+        #                                threshold=base.SCORE_THRESHOLD,
+        #                                body_part_colors=colors,
+        #                                body_part_sizes=sizes,
+        #                                video_folder=input_folder,
+        #                                pose_2d_folder=pose2d_filter_folder,
+        #                                out_folder= pose2d_video_filtered_folder
+        #                                )
+        #
+        # anp.triangulate.process_peter(triangulation_config=triangulation_config,
+        #                               calib_folder=calib_dir,
+        #                               pose_folder=pose2d_folder,
+        #                               video_folder=input_folder,
+        #                               output_folder=pose3d_folder,
+        #                               cam_regex=base.CAM_REGEX)
+        # anp.filter_3d.process_peter(FILTER3D_CONFIG,
+        #                             pose3d_folder,
+        #                             pose3d_filter_folder)
+        # anp.label_videos_3d.process_peter(scheme=scheme,
+        #                                   optim=triangulation_config['optim'],
+        #                                   video_folder=input_folder,
+        #                                   pose_3d_folder=pose3d_folder,
+        #                                   out_folder=pose3d_video_folder,
+        #                                   video_ext=base.RAW_VIDEO_EXT,
+        #                                   cam_regex=base.CAM_REGEX)
+        # anp.label_combined.process_peter(scheme=scheme,
+        #                                  optim=triangulation_config['optim'],
+        #                                  calib_folder=calib_dir,
+        #                                  video_folder=input_folder,
+        #                                  pose_3d_folder=pose3d_folder,
+        #                                  video_3d_folder=pose3d_video_folder,
+        #                                  out_folder=combined_video_folder,
+        #                                  cam_regex=base.CAM_REGEX,
+        #                                  video_ext=base.RAW_VIDEO_EXT)
+
+    calib_dir = r'C:\Users\Peter\Desktop\anipose\calibration'
+    data_dir = r'C:\Users\Peter\Desktop\DATA'
+    model_dirs = {
+        'CAM0': r'C:\Users\Peter\Desktop\DLC\M2_M4_M5_M9_FRONT-pw-2021-03-08',
+        'CAM1': r'C:\Users\Peter\Desktop\DLC\M2_M4_M5_M9_SIDE-pw-2021-03-09'
+    }
+    mouse_dates = [
+        r'M5\2021_03_11',
+        r'M5\2021_03_12',
+        r'M5\2021_03_14',
+        # r'M9\2021.03.11',
+        # r'M9\2021.03.12',
+        # r'M9\2021.03.14',
+    ]
+    test = False
+    for mouse_date in mouse_dates:
+        input_folder = os.path.join(data_dir, mouse_date)
+        analyze(input_folder, model_dirs, test=test)

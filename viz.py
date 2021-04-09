@@ -5,6 +5,7 @@ import seaborn as sns
 import base
 import os
 
+plt.rcParams.update({'font.size': 8})
 
 GRABTYPE_TO_COLOR_DICT = {
     base.GRABTYPES.SNATCHED: 'green',
@@ -18,7 +19,7 @@ GRABTYPE_TO_COLOR_DICT = {
 def save_fig(save_path, figname='', dpi=300, pdf=False, show=False):
     os.makedirs(save_path, exist_ok=True)
     figname = os.path.join(save_path, figname)
-    plt.savefig(os.path.join(figname + '.png'), dpi=dpi)
+    plt.savefig(os.path.join(figname + '.jpg'), dpi=dpi)
     print('Figure saved at: ' + figname)
 
     if pdf:
@@ -46,8 +47,8 @@ def plot_pellet_and_grab_locations(pellet_loc,
     n_trials = len(pellet_loc)
     offsets = np.arange(len(pellet_loc))
     color_pellet = 'black'
-    w, h = 7, 14
-    thickness = 4
+    w, h = 5, 10
+    thickness = 2
     plt.figure(figsize=(w, h))
     plt.eventplot(pellet_loc.reshape(-1, 1),
                   lineoffsets=offsets,
@@ -98,7 +99,6 @@ def plot_pellet_and_grab_locations(pellet_loc,
         ax.grid(which='minor', alpha=0.2)
         ax.grid(which='major', alpha=0.7)
 
-    from matplotlib.lines import Line2D
     # custom_lines = [Line2D([0], [0], color=color_pellet, lw=4)] + \
     #                [Line2D([0], [0], color=x, lw=4) for x in cmap]
     # ax.legend(custom_lines,
@@ -110,3 +110,26 @@ def plot_pellet_and_grab_locations(pellet_loc,
               ['Pellet Location'] + [f'{k}' for k in grab_legend.keys()],
               frameon=False,
               loc="upper right")
+
+
+def black_theme(fig, ax):
+    fig.set_facecolor('black')
+    ax.set_facecolor('black')
+
+
+def threedimstyle(fig, ax, elevation, azimuth):
+    ax.grid(False)
+    ax.w_xaxis.pane.fill = False
+    ax.w_yaxis.pane.fill = False
+    ax.w_zaxis.pane.fill = False
+    ax.w_xaxis.set_pane_color((0.0, 0.0, 0.0, 0.0))
+    ax.w_yaxis.set_pane_color((0.0, 0.0, 0.0, 0.0))
+    ax.w_zaxis.set_pane_color((0.0, 0.0, 0.0, 0.0))
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    sns.despine()
+    ax.invert_zaxis()
+    ax.view_init(elevation, azimuth)
+    ax.invert_zaxis()
+
